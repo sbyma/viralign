@@ -10,6 +10,7 @@
 #include "agd_chunk_converter.h"
 #include "agd_writer.h"
 #include "args.h"
+#include "object_pool.h"
 #include "fastq_manager.h"
 
 using namespace std;
@@ -152,13 +153,18 @@ int main(int argc, char** argv) {
 
   std::vector<std::thread> converter_threads(threads);
 
+  ObjectPool<agd::Buffer> buffer_pool;
+  
   for (auto& t : converter_threads) {
-    t = std::thread([&chunk_queue, &output_queue, &done]() {
+    t = std::thread([&chunk_queue, &output_queue, &done, &buffer_pool]() {
       FastqQueueItem item;
       AGDChunkConverter converter;
       Status s;
       while (!done) {
         FastqColumns output_cols;
+        output_cols.base = std::move(buffer_pool.get());
+        output_cols.qual = std::move(buffer_pool.get());
+        output_cols.meta = std::move(buffer_pool.get());
         if (!chunk_queue.pop(item)) continue;
 
         if (item.chunk_2.IsValid()) {
@@ -189,12 +195,12 @@ int main(int argc, char** argv) {
   std::atomic_uint32_t chunk_count{0};
 
   auto writer_thread = std::thread([&]() {
-    OutputQueueItem item;
     AGDWriter writer(dataset_name);
     writer.Init(output_dir);
     Status s = Status::OK();
 
     while (!writer_done) {
+      OutputQueueItem item;
       if (!output_queue.pop(item)) continue;
 
       s = writer.Write(item);

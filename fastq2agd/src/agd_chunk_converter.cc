@@ -34,9 +34,9 @@ Status AGDChunkConverter::Convert(FastqChunk &fastq_chunk,
   }
 
   output_cols->chunk_size = fastq_chunk.NumRecords();
-  ERR_RETURN_IF_ERROR(CompressBuffer(base_bufpair_, &output_cols->base));
-  ERR_RETURN_IF_ERROR(CompressBuffer(qual_bufpair_, &output_cols->qual));
-  ERR_RETURN_IF_ERROR(CompressBuffer(meta_bufpair_, &output_cols->meta));
+  ERR_RETURN_IF_ERROR(CompressBuffer(base_bufpair_, output_cols->base));
+  ERR_RETURN_IF_ERROR(CompressBuffer(qual_bufpair_, output_cols->qual));
+  ERR_RETURN_IF_ERROR(CompressBuffer(meta_bufpair_, output_cols->meta));
 
   return Status::OK();
 }
@@ -76,15 +76,15 @@ Status AGDChunkConverter::ConvertPaired(FastqChunk &fastq_chunk_1,
   // output chunk size will be twice that of
   // input, because we interleave paired reads
   output_cols->chunk_size = fastq_chunk_1.NumRecords() * 2;
-  ERR_RETURN_IF_ERROR(CompressBuffer(base_bufpair_, &output_cols->base));
-  ERR_RETURN_IF_ERROR(CompressBuffer(qual_bufpair_, &output_cols->qual));
-  ERR_RETURN_IF_ERROR(CompressBuffer(meta_bufpair_, &output_cols->meta));
+  ERR_RETURN_IF_ERROR(CompressBuffer(base_bufpair_, output_cols->base));
+  ERR_RETURN_IF_ERROR(CompressBuffer(qual_bufpair_, output_cols->qual));
+  ERR_RETURN_IF_ERROR(CompressBuffer(meta_bufpair_, output_cols->meta));
 
   return Status::OK();
 }
 
 Status AGDChunkConverter::CompressBuffer(agd::BufferPair &buf_pair,
-                                         agd::Buffer *buf) {
+                                         ObjectPool<agd::Buffer>::ptr_type& buf) {
   buf->reserve(buf_pair.data().size() + buf_pair.index().size());
   agd::AppendingGZIPCompressor compressor(
       *buf);  // destructor releases GZIP resources

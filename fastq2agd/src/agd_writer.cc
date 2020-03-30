@@ -69,7 +69,7 @@ Status AGDWriter::Write(const OutputQueueItem& item) {
 
   std::ofstream bases_file(bases_name, std::ios::binary);
   bases_file.write(reinterpret_cast<const char*>(&header), sizeof(header));
-  bases_file.write(item.columns.base.data(), item.columns.base.size());
+  bases_file.write(item.columns.base->data(), item.columns.base->size());
 
   if (!bases_file.good()) {
     return errors::Internal("Failed to write bases file ", bases_name);
@@ -78,7 +78,7 @@ Status AGDWriter::Write(const OutputQueueItem& item) {
 
   std::ofstream qual_file(qual_name, std::ios::binary);
   qual_file.write(reinterpret_cast<const char*>(&header), sizeof(header));
-  qual_file.write(item.columns.qual.data(), item.columns.qual.size());
+  qual_file.write(item.columns.qual->data(), item.columns.qual->size());
 
   if (!qual_file.good()) {
     return errors::Internal("Failed to write qual file ", qual_name);
@@ -87,7 +87,7 @@ Status AGDWriter::Write(const OutputQueueItem& item) {
 
   std::ofstream meta_file(meta_name, std::ios::binary);
   meta_file.write(reinterpret_cast<const char*>(&header), sizeof(header));
-  meta_file.write(item.columns.meta.data(), item.columns.meta.size());
+  meta_file.write(item.columns.meta->data(), item.columns.meta->size());
 
   if (!meta_file.good()) {
     return errors::Internal("Failed to write meta file ", meta_name);

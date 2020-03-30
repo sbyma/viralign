@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <cstring>
 #include <memory>
+#include <iostream>
 #include "util.h"
 
 namespace agd {
