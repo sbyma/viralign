@@ -1,12 +1,14 @@
 #pragma once
 
+#include <iostream>
 #include <memory>
 #include <stack>
-#include <iostream>
+
 #include "absl/synchronization/mutex.h"
 
 // adapted from https://stackoverflow.com/a/27837534
 // should be threadsafe
+namespace agd {
 
 template <class T>
 class ObjectPool {
@@ -43,8 +45,7 @@ class ObjectPool {
   using ptr_type = std::unique_ptr<T, External_Deleter>;
 
   ObjectPool() : this_ptr_(new ObjectPool<T>*(this)) {}
-  virtual ~ObjectPool() {
-  }
+  virtual ~ObjectPool() {}
 
   ptr_type get() {
     absl::MutexLock l(&mu_);
@@ -72,3 +73,5 @@ class ObjectPool {
   std::stack<std::unique_ptr<T> > pool_;
   absl::Mutex mu_;
 };
+
+}  // namespace agd

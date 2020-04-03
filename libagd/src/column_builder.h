@@ -20,7 +20,7 @@ class ColumnBuilder {
 
   virtual void AppendRecord(const char* data, const std::size_t size);
 
-  // finish 
+  // optionally compress the current buffer into output_buf 
   Status CompressChunk(agd::Buffer* output_buf);
 
  protected:

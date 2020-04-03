@@ -153,7 +153,7 @@ int main(int argc, char** argv) {
 
   std::vector<std::thread> converter_threads(threads);
 
-  ObjectPool<agd::Buffer> buffer_pool;
+  agd::ObjectPool<agd::Buffer> buffer_pool;
   
   for (auto& t : converter_threads) {
     t = std::thread([&chunk_queue, &output_queue, &done, &buffer_pool]() {

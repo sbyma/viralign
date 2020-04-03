@@ -88,7 +88,7 @@ Status AGDChunkConverter::ConvertPaired(FastqChunk &fastq_chunk_1,
 }
 
 Status AGDChunkConverter::CompressBuffer(agd::BufferPair &buf_pair,
-                                         ObjectPool<agd::Buffer>::ptr_type& buf) {
+                                         agd::ObjectPool<agd::Buffer>::ptr_type& buf) {
   buf->reserve(buf_pair.data().size() + buf_pair.index().size());
   agd::AppendingGZIPCompressor compressor(
       *buf);  // destructor releases GZIP resources

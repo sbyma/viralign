@@ -9,9 +9,9 @@
 
 // contains compressed chunks for output.
 struct FastqColumns {
-  ObjectPool<agd::Buffer>::ptr_type base;
-  ObjectPool<agd::Buffer>::ptr_type qual;
-  ObjectPool<agd::Buffer>::ptr_type meta;
+  agd::ObjectPool<agd::Buffer>::ptr_type base;
+  agd::ObjectPool<agd::Buffer>::ptr_type qual;
+  agd::ObjectPool<agd::Buffer>::ptr_type meta;
   size_t chunk_size;
 };
 
@@ -32,5 +32,5 @@ class AGDChunkConverter {
   agd::BufferPair qual_bufpair_;
   agd::BufferPair meta_bufpair_;
 
-  Status CompressBuffer(agd::BufferPair& buf_pair, ObjectPool<agd::Buffer>::ptr_type& buf);
+  Status CompressBuffer(agd::BufferPair& buf_pair, agd::ObjectPool<agd::Buffer>::ptr_type& buf);
 };
