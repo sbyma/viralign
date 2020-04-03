@@ -68,22 +68,6 @@ namespace format {
     END = 7
   };
 
-
-  /*struct __attribute__((packed)) AlignmentResult {
-    uint16_t flag_ = 0; // ResultFlag
-    int mapq_ = 0;
-    int64_t location_ = 0; // POS field in SAM format
-    int64_t next_location_ = 0; // the relative genomeLocation of the next segment (read)
-    int64_t template_length_ = 0; // signed distance from leftmost mapped base to rightmost mapped base
-
-    void convertFromSNAP(const SingleAlignmentResult &result, const int flag);
-    std::string ToString() const {
-      return string("flag: ") + std::to_string(flag_) + " mapq: " + std::to_string(mapq_) +
-        " location: " + std::to_string(location_) + " nextLocation: " + std::to_string(next_location_) +
-        "templateLen: " + std::to_string(template_length_);
-    }
-   };*/
-
   struct __attribute__((packed)) BinaryBases {
     BinaryBases() : bases(0) {};
 

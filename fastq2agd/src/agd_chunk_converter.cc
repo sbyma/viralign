@@ -76,9 +76,13 @@ Status AGDChunkConverter::ConvertPaired(FastqChunk &fastq_chunk_1,
   // output chunk size will be twice that of
   // input, because we interleave paired reads
   output_cols->chunk_size = fastq_chunk_1.NumRecords() * 2;
-  ERR_RETURN_IF_ERROR(CompressBuffer(base_bufpair_, output_cols->base));
+  ERR_RETURN_IF_ERROR(base_builder.CompressChunk(output_cols->base.get()));
+  ERR_RETURN_IF_ERROR(qual_builder.CompressChunk(output_cols->qual.get()));
+  ERR_RETURN_IF_ERROR(meta_builder.CompressChunk(output_cols->meta.get()));
+  
+  /*ERR_RETURN_IF_ERROR(CompressBuffer(base_bufpair_, output_cols->base));
   ERR_RETURN_IF_ERROR(CompressBuffer(qual_bufpair_, output_cols->qual));
-  ERR_RETURN_IF_ERROR(CompressBuffer(meta_bufpair_, output_cols->meta));
+  ERR_RETURN_IF_ERROR(CompressBuffer(meta_bufpair_, output_cols->meta));*/
 
   return Status::OK();
 }

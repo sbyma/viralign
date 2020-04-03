@@ -10,7 +10,7 @@
 #include "agd_chunk_converter.h"
 #include "agd_writer.h"
 #include "args.h"
-#include "object_pool.h"
+#include "libagd/src/object_pool.h"
 #include "fastq_manager.h"
 
 using namespace std;

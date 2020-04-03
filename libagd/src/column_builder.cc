@@ -1,4 +1,5 @@
 #include "column_builder.h"
+#include "compression.h"
 #include <iostream>
 #include "util.h"
 
@@ -38,6 +39,18 @@ void ColumnBuilder::AppendRecord(const char* data, const size_t size) {
     data_->AppendBuffer(data, size);
   format::RelativeIndex cSize = static_cast<uint16_t>(size);
   index_->AppendBuffer(reinterpret_cast<const char*>(&cSize), sizeof(cSize));
+}
+
+
+Status ColumnBuilder::CompressChunk(agd::Buffer* output_buf) {
+  output_buf->reserve(data_->size() + index_->size());
+  output_buf->reset();
+  agd::AppendingGZIPCompressor compressor(
+      *output_buf);  // destructor releases GZIP resources
+  ERR_RETURN_IF_ERROR(compressor.init());
+  ERR_RETURN_IF_ERROR(compressor.appendGZIP(index_->data(), index_->size()));
+  ERR_RETURN_IF_ERROR(compressor.appendGZIP(data_->data(), data_->size()));
+  return Status::OK();
 }
 
 }  // namespace agd

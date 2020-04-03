@@ -74,6 +74,7 @@ class AGDDataset {
 
 // a buffered dataset that reads chunks from columns on the fly
 // reduced memory consumption, but not efficient
+// There is fundamentally a trade off between streaming access and random access
 class AGDBufferedDataset {
  public:
   static Status Create(const std::string& agd_json_path,
@@ -136,6 +137,15 @@ class AGDBufferedDataset {
   std::vector<ChunkTuple> chunks_;
   std::vector<std::string> columns_;
   std::string file_path_base_;
+};
+
+// interface to stream an AGD dataset.
+// overlapped IO and parsing with threading
+// fast and efficient
+// DOES NOT provide random access
+// TODO
+class AGDStreamingDataset {
+
 };
 
 }  // namespace agd

@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <iostream>
 
 using namespace std;
 
@@ -17,6 +18,7 @@ Status mmap_file(const std::string& file_path, char** file_ptr,
     return Internal("Unable to stat file ", file_path);
   }
   auto size = st.st_size;
+  std::cout << "file size var is " << sizeof(size) << " bytes\n";
   char* mapped = (char*)mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
   if (mapped == MAP_FAILED) {
     return Internal("Unable to map file ", file_path, ", returned ", mapped);

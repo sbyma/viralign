@@ -5,7 +5,7 @@
 #include "libagd/src/buffer_pair.h"
 #include "libagd/src/column_builder.h"
 #include "libagd/src/compression.h"
-#include "object_pool.h"
+#include "libagd/src/object_pool.h"
 
 // contains compressed chunks for output.
 struct FastqColumns {
