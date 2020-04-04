@@ -19,6 +19,9 @@ class ObjectPool {
     External_Deleter() = default;
 
     void operator()(T* ptr) {
+      if (ptr == nullptr)  {
+        std::cout << "what the fuck\n";
+      }
       if (auto pool_ptr = pool_.lock()) {
         if (!pool_ptr.get()) return;
         try {

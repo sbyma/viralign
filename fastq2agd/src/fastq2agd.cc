@@ -1,17 +1,19 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <memory>
 #include <thread>
+
 #include "absl/strings/str_cat.h"
 #include "agd_chunk_converter.h"
 #include "agd_writer.h"
 #include "args.h"
-#include "libagd/src/object_pool.h"
 #include "fastq_manager.h"
+#include "libagd/src/object_pool.h"
 
 using namespace std;
 using namespace errors;
@@ -63,18 +65,34 @@ int main(int argc, char** argv) {
   std::cout << "Using chunk size: " << chunk_size << "\n";
   Status s;
 
+  auto pos = fastq_files_vec[0].find_last_of(".");
+  auto ext = fastq_files_vec[0].substr(pos + 1);
+  cout << "ext is " << ext << "\n";
+
   if (fastq_files_vec.size() > 2) {
     std::cout << "You must provide 2 or fewer fastq files.\n";
     return 0;
   } else if (args::get(fastq_files).size() == 2) {
     // setup paired
-    s = FastqManager::CreatePairedFastqManager(fastq_files_vec[0],
-                                               fastq_files_vec[1], chunk_size,
-                                               &chunk_queue, fastq_manager);
+    if (ext == "gz") {
+      s = FastqManager::CreatePairedFastqGZManager(
+          fastq_files_vec[0], fastq_files_vec[1], chunk_size, &chunk_queue,
+          fastq_manager);
+
+    } else {
+      s = FastqManager::CreatePairedFastqManager(fastq_files_vec[0],
+                                                 fastq_files_vec[1], chunk_size,
+                                                 &chunk_queue, fastq_manager);
+    }
   } else {
     // setup single
-    s = FastqManager::CreateFastqManager(fastq_files_vec[0], chunk_size,
-                                         &chunk_queue, fastq_manager);
+    if (ext == "gz") {
+      s = FastqManager::CreateFastqGZManager(fastq_files_vec[0], chunk_size,
+                                             &chunk_queue, fastq_manager);
+    } else {
+      s = FastqManager::CreateFastqManager(fastq_files_vec[0], chunk_size,
+                                           &chunk_queue, fastq_manager);
+    }
   }
 
   if (!s.ok()) {
@@ -100,6 +118,8 @@ int main(int argc, char** argv) {
   } else {
     output_dir = dataset_name + "/";
   }
+  
+  agd::ObjectPool<agd::Buffer> buffer_pool;
 
   unsigned int threads = std::thread::hardware_concurrency();
   if (threads_arg) {
@@ -110,10 +130,11 @@ int main(int argc, char** argv) {
     }
   }
 
-  cout << "Using " << threads << " threads for conversion and chunk compression\n";
+  cout << "Using " << threads
+       << " threads for conversion and chunk compression\n";
 
-  auto chunker_thread = std::thread([&fastq_manager]() {
-    Status s = fastq_manager->Run();
+  auto chunker_thread = std::thread([&fastq_manager, &buffer_pool]() {
+    Status s = fastq_manager->Run(&buffer_pool);
     if (!s.ok()) {
       cout << "Chunker Thread: fastq manager Run ended with error: "
            << s.error_message() << "\n";
@@ -130,31 +151,40 @@ int main(int argc, char** argv) {
   size_t bases_size, meta_size;
 
   while (chunk_queue.pop(item)) {
-    cout << "chunk size is " << item.chunk_1.NumRecords() << "\n";
+    cout << "chunk size is " << item.chunk_1->NumRecords() << "\n";
     cout << "chunk 1:\n";
-    Status stat = item.chunk_1.GetNextRecord(&bases, &bases_size, &qual, &meta,
-  &meta_size); while (stat.ok()) { cout << string(meta, meta_size) << "\n" <<
-  string(bases, bases_size) << "\n" << string(qual, bases_size) << "\n" << "\n";
-      stat = item.chunk_1.GetNextRecord(&bases, &bases_size, &qual, &meta,
-                                        &meta_size);
+    Status stat = item.chunk_1->GetNextRecord(&bases, &bases_size, &qual, &meta,
+                                              &meta_size);
+    while (stat.ok()) {
+      cout << string(meta, meta_size) << "\n"
+           << string(bases, bases_size) << "\n"
+           << string(qual, bases_size) << "\n"
+           << "\n";
+      stat = item.chunk_1->GetNextRecord(&bases, &bases_size, &qual, &meta,
+                                         &meta_size);
     }
 
     cout << "chunk 2:\n";
-    stat = item.chunk_2.GetNextRecord(&bases, &bases_size, &qual, &meta,
-  &meta_size); while (stat.ok()) { cout << string(meta, meta_size) << "\n" <<
-  string(bases, bases_size) << "\n" << string(qual, bases_size) << "\n" << "\n";
-      stat = item.chunk_2.GetNextRecord(&bases, &bases_size, &qual, &meta,
-  &meta_size);
+    stat = item.chunk_2->GetNextRecord(&bases, &bases_size, &qual, &meta,
+                                       &meta_size);
+    while (stat.ok()) {
+      cout << string(meta, meta_size) << "\n"
+           << string(bases, bases_size) << "\n"
+           << string(qual, bases_size) << "\n"
+           << "\n";
+      stat = item.chunk_2->GetNextRecord(&bases, &bases_size, &qual, &meta,
+                                         &meta_size);
     }
-  }*/
+  }
+
+  exit(0);*/
 
   volatile bool done = false;
   OutputQueueType output_queue(10);
 
   std::vector<std::thread> converter_threads(threads);
 
-  agd::ObjectPool<agd::Buffer> buffer_pool;
-  
+
   for (auto& t : converter_threads) {
     t = std::thread([&chunk_queue, &output_queue, &done, &buffer_pool]() {
       FastqQueueItem item;
@@ -167,15 +197,16 @@ int main(int argc, char** argv) {
         output_cols.meta = std::move(buffer_pool.get());
         if (!chunk_queue.pop(item)) continue;
 
-        if (item.chunk_2.IsValid()) {
-          s = converter.ConvertPaired(item.chunk_1, item.chunk_2, &output_cols);
+        if (item.chunk_2.get() && item.chunk_2->IsValid()) {
+          s = converter.ConvertPaired(*item.chunk_1, *item.chunk_2,
+                                      &output_cols);
         } else {
-          s = converter.Convert(item.chunk_1, &output_cols);
+          s = converter.Convert(*item.chunk_1, &output_cols);
         }
 
         if (!s.ok()) {
           cout << "Convert failed to successfully convert with error: "
-              << s.error_message() << "\n";
+               << s.error_message() << "\n";
           exit(0);
         }
 
@@ -186,7 +217,6 @@ int main(int argc, char** argv) {
       }
     });
   }
-
 
   volatile bool writer_done = false;
 
@@ -215,18 +245,18 @@ int main(int argc, char** argv) {
     absl::MutexLock l(&mu);
     all_records.insert(all_records.begin(), recs.begin(), recs.end());
   });
-  
-  auto measure_thread = std::thread([&done, &chunk_queue, &output_queue](){
+
+  auto measure_thread = std::thread([&done, &chunk_queue, &output_queue]() {
     int time_count = 0;
     ofstream csv_out("queue_levels.csv");
     while (!done) {
-      csv_out << time_count << "," << chunk_queue.size() << "," << output_queue.size() << "\n";
+      csv_out << time_count << "," << chunk_queue.size() << ","
+              << output_queue.size() << "\n";
       time_count++;
       std::this_thread::sleep_for(1s);
     }
     csv_out.close();
   });
-
 
   chunker_thread.join();
   while (chunk_count.load() != fastq_manager->TotalChunks()) {

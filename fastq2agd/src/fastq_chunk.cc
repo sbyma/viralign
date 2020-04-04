@@ -23,7 +23,9 @@ FastqChunk::FastqChunk(const char* start_ptr, const char* end_ptr,
     : start_ptr_(start_ptr),
       end_ptr_(end_ptr),
       current_record_(start_ptr),
-      max_records_(max_records) {}
+      max_records_(max_records) {
+        std::cout << " chunk is " << end_ptr - start_ptr << " bytes long\n";
+      }
 
 Status FastqChunk::GetNextRecord(const char** bases, size_t* bases_len,
                                    const char** quals, const char** meta,

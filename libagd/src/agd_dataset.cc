@@ -281,7 +281,7 @@ Status AGDBufferedDataset::ColumnIterator::GetNextRecord(const char** data,
 Status AGDBufferedDataset::ColumnIterator::GetRecordAt(size_t index,
                                                        const char** data,
                                                        size_t* size) {
-  int chunk = index / chunk_size_;
+  uint64_t chunk = index / chunk_size_;
   if (current_chunk_ != chunk || !current_reader_.get()) {
     // load the appropriate chunk
     ERR_RETURN_IF_ERROR(LoadChunk(chunks_->at(chunk)));

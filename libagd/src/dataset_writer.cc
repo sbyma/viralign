@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 
 #include "compression.h"
@@ -138,8 +139,7 @@ void DatasetWriter::compress_func() {
       std::cout << "Error: couldn't init compressor\n";
       exit(0);
     }
-    s = compressor.appendGZIP(item.buf->data().data(),
-                              item.buf->data().size());
+    s = compressor.appendGZIP(item.buf->data().data(), item.buf->data().size());
     if (!s.ok()) {
       std::cout << "Error: couldn't init compressor\n";
       exit(0);
@@ -186,22 +186,40 @@ void DatasetWriter::write_func() {
   }
 }
 
-  void DatasetWriter::Stop() {
-    std::cout << "stopping dataset writer\n";
-    chunk_queue_->unblock();
-    done_ = true;
-    for (auto& t : compress_threads_) {
-      t.join();
-    }
-    while (!write_queue_->empty()) {
-      std::this_thread::sleep_for(1ms);
-    }
-    
-    write_queue_->unblock();
-    write_done_ = true;
-    for (auto& t : write_threads_) {
-      t.join();
-    }
-    std::cout << "done stopping\n";
+void DatasetWriter::Stop() {
+  std::cout << "stopping dataset writer\n";
+  while (!chunk_queue_->empty()) {
+    std::this_thread::sleep_for(1ms);
   }
+  chunk_queue_->unblock();
+  done_ = true;
+  for (auto& t : compress_threads_) {
+    t.join();
+  }
+  while (!write_queue_->empty()) {
+    std::this_thread::sleep_for(1ms);
+  }
+
+  write_queue_->unblock();
+  write_done_ = true;
+  for (auto& t : write_threads_) {
+    t.join();
+  }
+  std::cout << "done stopping\n";
+}
+
+Status DatasetWriter::WriteMetadata() {
+  nlohmann::json metadata_json;
+
+  metadata_json["columns"] = {"base", "qual", "meta"};
+  metadata_json["version"] = 1;
+  metadata_json["name"] = name_;
+  metadata_json["records"] = records_;
+
+  std::ofstream o(absl::StrCat(path_, "metadata.json"));
+  o << std::setw(4) << metadata_json << std::endl;
+
+  return Status::OK();
+}
+
 }  // namespace agd

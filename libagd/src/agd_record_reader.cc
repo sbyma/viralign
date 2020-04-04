@@ -55,6 +55,8 @@ Status AGDRecordReader::GetRecordAt(size_t index, const char** data,
   } else {
     return OutOfRange("agd record random access out of range");
   }
+  cur_record_ = index + 1;
+  cur_data_ = data_ + absolute_index_[index + 1];
   return Status::OK();
 }
 

@@ -45,6 +45,9 @@ class DatasetWriter {
   Status WriteChunks(std::vector<ObjectPool<BufferPair>::ptr_type>& column_bufs,
                      size_t chunk_size, uint64_t first_ordinal);
 
+  // write out the metadata json file (after adding all chunks)
+  Status WriteMetadata();
+
   void Stop();
 
  private:

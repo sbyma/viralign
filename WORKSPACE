@@ -14,6 +14,12 @@ local_repository(
   path = "third_party/args",
 )
 
+local_repository(
+  name = "zstr",
+
+  path = "third_party/zstr",
+)
+
 http_archive(
     name = "gtest",
     url = "https://github.com/google/googletest/archive/release-1.7.0.zip",
@@ -46,6 +52,13 @@ http_archive(
         "https://mirror.bazel.build/github.com/bazelbuild/rules_proto/archive/218ffa7dfa5408492dc86c01ee637614f8695c45.tar.gz",
         "https://github.com/bazelbuild/rules_proto/archive/218ffa7dfa5408492dc86c01ee637614f8695c45.tar.gz",
     ],
+)
+
+http_archive(
+  name = "snap",
+  urls = ["https://www.dropbox.com/s/q0k6dku1hdyi3r6/snap.zip?dl=1"],
+  sha256 = "18a5e931a053cf47f16186a0ae07c63539a39edf6d87e455011e637709e6c217",
+  build_file = "snap.BUILD"
 )
 
 load("@rules_cc//cc:repositories.bzl", "rules_cc_dependencies")
