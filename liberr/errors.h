@@ -98,7 +98,7 @@ void AppendToMessage(::errors::Status* status, Args... args) {
 
 //DECLARE_ERROR(Cancelled, CANCELLED)
 DECLARE_ERROR(InvalidArgument, INVALID_ARGUMENT)
-DECLARE_ERROR(NotFound, NOT_FOUND)
+DECLARE_ERROR(ObjNotFound, NOT_FOUND)
 //DECLARE_ERROR(AlreadyExists, ALREADY_EXISTS)
 DECLARE_ERROR(ResourceExhausted, RESOURCE_EXHAUSTED)
 DECLARE_ERROR(Unavailable, UNAVAILABLE)

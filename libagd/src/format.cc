@@ -103,7 +103,7 @@ Status BinaryBases::getBase(const size_t position, char *base) const {
     case END:
       return ResourceExhausted("done");
     default:
-      return NotFound("Base alphabet for type ", x, " not found");
+      return ObjNotFound("Base alphabet for type ", x, " not found");
   }
   return Status::OK();
 }

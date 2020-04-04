@@ -49,7 +49,7 @@ class AGDDataset {
       *iter = ColumnIterator(&column_map_[column], total_records_);
       return Status::OK();
     } else {
-      return NotFound("column ", column, " not found in column map.");
+      return ObjNotFound("column ", column, " not found in column map.");
     }
   }
 
@@ -120,7 +120,7 @@ class AGDBufferedDataset {
       *iter = ColumnIterator(column, total_records_, chunk_size_, chunks_, file_path_base_);
       return Status::OK();
     } else {
-      return NotFound("column ", column, " not found in column map.");
+      return ObjNotFound("column ", column, " not found in column map.");
     }
   }
 

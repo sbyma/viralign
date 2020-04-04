@@ -53,7 +53,7 @@ Status AGDDataset::Initialize(const string& agd_json_path,
         }
       }
       if (!found) {
-        return NotFound("column ", c, " was not found in dataset.");
+        return ObjNotFound("column ", c, " was not found in dataset.");
       }
     }
     to_load = columns;
@@ -189,7 +189,7 @@ Status AGDBufferedDataset::Initialize(const string& agd_json_path,
         }
       }
       if (!found) {
-        return NotFound("column ", c, " was not found in dataset.");
+        return ObjNotFound("column ", c, " was not found in dataset.");
       }
     }
     columns_ = columns;

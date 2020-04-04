@@ -4,6 +4,7 @@ cc_binary(
   copts = ["-std=c++14"],
   deps = ["@com_google_absl//absl/strings",
           "@args//:args",
+          "@json//:json-cpp",
           "@snap//:snap_lib",
           "//libagd:libagd",
           "//liberr:liberr",

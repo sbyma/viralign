@@ -54,7 +54,8 @@ class AGDFileSystemReader {
   std::unique_ptr<OutputQueueType> output_queue_;
   std::unique_ptr<InterQueueType> inter_queue_;
 
-  volatile bool done_;
+  volatile bool done_ = false;
+  volatile bool parser_done_ = false;
 
   std::vector<std::thread> parse_threads_;
   std::thread read_thread_;

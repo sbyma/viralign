@@ -26,3 +26,7 @@ Status mmap_file(const std::string& file_path, char** file_ptr,
   *file_size = size;
   return Status::OK();
 }
+
+void unmap_file(char* file, uint64_t size) {
+  munmap(file, size);
+}

@@ -5,7 +5,9 @@
 
 #include "absl/strings/str_split.h"
 #include "args.h"
-#include "libagd/src/agd_dataset.h"
+#include "json.hpp"
+#include "libagd/src/agd_filesystem_reader.h"
+#include "libagd/src/agd_record_reader.h"
 #include "snap-master/SNAPLib/Bam.h"
 #include "snap-master/SNAPLib/Read.h"
 #include "snap_single_aligner.h"
@@ -104,7 +106,62 @@ int main(int argc, char** argv) {
 
   std::string agd_meta_path = args::get(agd_metadata_args);
 
-  std::unique_ptr<agd::AGDBufferedDataset> dataset;
+  std::ifstream i(agd_meta_path);
+  json agd_metadata;
+  i >> agd_metadata;
+
+  const auto& records = agd_metadata["records"];
+
+  auto file_path_base =
+      agd_meta_path.substr(0, agd_meta_path.find_last_of('/') + 1);
+
+  std::cout << "base path is " << file_path_base << "\n";
+
+  std::unique_ptr<agd::AGDFileSystemReader::InputQueueType> input_queue =
+      std::make_unique<agd::AGDFileSystemReader::InputQueueType>(5);
+
+  std::vector<std::string> columns = {"base", "qual"};
+
+  agd::ObjectPool<agd::Buffer> buf_pool;
+  std::unique_ptr<agd::AGDFileSystemReader> reader;
+  auto s = agd::AGDFileSystemReader::Create(columns, input_queue.get(), 4,
+                                            buf_pool, reader);
+  if (!s.ok()) {
+    std::cout << "[align-core] File system reader creation failed: "
+              << s.error_message() << "\n";
+    return 0;
+  }
+
+  for (const auto& rec : records) {
+    auto chunk_path = absl::StrCat(file_path_base, rec["path"].get<std::string>());
+    std::cout << "chunk path is: " << chunk_path << "\n";
+    input_queue->push(std::move(chunk_path));
+  }
+
+  //std::cout << "[align-core] getting output queue \n";
+  auto chunk_queue = reader->GetOutputQueue();
+
+  for (size_t i = 0; i < records.size(); i++) {
+    agd::AGDFileSystemReader::OutputQueueItem item;
+    chunk_queue->pop(item);
+
+    agd::AGDRecordReader base_reader(item.col_bufs[0]->data(), item.chunk_size);
+    agd::AGDRecordReader qual_reader(item.col_bufs[1]->data(), item.chunk_size);
+
+    const char *base, *qual;
+    size_t base_len, qual_len;
+    Status s = base_reader.GetNextRecord(&base, &base_len);
+    while (s.ok()) {
+      s = qual_reader.GetNextRecord(&qual, &qual_len);
+      CheckStatus(s);
+      std::cout << std::string(base, base_len) << "\n" << std::string(qual, qual_len) << "\n\n";
+      s = base_reader.GetNextRecord(&base, &base_len);
+    }
+  }
+
+  reader->Stop();
+
+  /*std::unique_ptr<agd::AGDBufferedDataset> dataset;
   auto s = agd::AGDBufferedDataset::Create(agd_meta_path, dataset);
   if (!s.ok()) {
     std::cout << "Error opening AGD dataset: " << s.error_message() << "\n";
@@ -149,7 +206,7 @@ int main(int argc, char** argv) {
               << std::string(substr, read.getDataLength()) << "\n\n";
     count++;
     s = c_base.GetNextRecord(&base, &base_len);
-  }
+  }*/
 
   return 0;
 }
