@@ -28,7 +28,7 @@ Status AGDFileSystemReader::Initialize(size_t threads) {
       if (!input_queue_->pop(item)) continue;
 
       InterQueueItem out_item;
-      out_item.reserve(columns_.size());
+      out_item.mapped_files.reserve(columns_.size());
       for (const auto& col : columns_) {
         auto filepath = absl::StrCat(item, ".", col);
 
@@ -40,10 +40,11 @@ Status AGDFileSystemReader::Initialize(size_t threads) {
           std::cout << "[AGDFSReader] WARNING: Could not map file. Thread exiting.\n";
           return; 
         }
-        out_item.push_back(mapped_file);
+        out_item.mapped_files.push_back(mapped_file);
       }
 
       //std::cout << "[AGDFSReader] pushing to inter_queue_: \n";
+      out_item.name = std::move(item);
       inter_queue_->push(std::move(out_item));
     }
   };
@@ -58,7 +59,8 @@ Status AGDFileSystemReader::Initialize(size_t threads) {
       if (!inter_queue_->pop(item)) continue;
 
       OutputQueueItem out_item;
-      for (auto& col_file : item) {
+      out_item.name = std::move(item.name);
+      for (auto& col_file : item.mapped_files) {
 
         auto buf = buf_pool_->get();
         uint64_t first_ordinal;
@@ -99,8 +101,10 @@ AGDFileSystemReader::OutputQueueType* AGDFileSystemReader::GetOutputQueue() {
 }
 
 void AGDFileSystemReader::Stop() {
+  // this doesnt own input_queue_, should it really be stopping it?
   std::cout << "[AGDFSReader] Stopping ...\n";
   while (!input_queue_->empty()) std::this_thread::sleep_for(1ms);
+  // may already be unblocked by the owner, but its fine
   input_queue_->unblock();
 
   done_ = true;
