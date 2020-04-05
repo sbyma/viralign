@@ -378,7 +378,7 @@ class ifstream
 {
 public:
     explicit ifstream(const std::string& filename, std::ios_base::openmode mode = std::ios_base::in)
-        : detail::strict_fstream_holder< strict_fstream::ifstream >(filename, mode),
+        : detail::strict_fstream_holder< strict_fstream::ifstream >(filename, mode | std::ios_base::binary),
           std::istream(new istreambuf(_fs.rdbuf()))
     {
         exceptions(std::ios_base::badbit);

@@ -30,7 +30,7 @@ typedef std::vector<nlohmann::json> RecordVec;
 class DatasetWriter {
  public:
   DatasetWriter() = delete;
-  ~DatasetWriter() { Stop(); }
+  ~DatasetWriter() { if (!done_) Stop(); }
 
   static Status CreateDatasetWriter(size_t compress_threads,
                                     size_t write_threads,

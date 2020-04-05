@@ -173,7 +173,7 @@ void DatasetWriter::write_func() {
     header.last_ordinal = item.first_ordinal + item.chunk_size;
 
     auto file_name =
-        absl::StrCat(path_, name_, "_", header.first_ordinal, item.column);
+        absl::StrCat(path_, name_, "_", header.first_ordinal, ".", item.column);
 
     std::ofstream out_file(file_name, std::ios::binary);
     out_file.write(reinterpret_cast<const char*>(&header), sizeof(header));

@@ -9,6 +9,9 @@ Status SampleSeparator::Separate() {
   s = fastq_parser_->GetNextRecord(&base, &base_len, &qual, &meta, &meta_len);
 
   while (s.ok()) {
+    std::cout << "[samplesep] processing read:\n"
+              << std::string(base, base_len) << "\n";
+
     s = sample_fastq_parser_->GetNextRecord(&sample_base, &sample_base_len,
                                             &sample_qual, &sample_meta,
                                             &sample_meta_len);
@@ -22,8 +25,9 @@ Status SampleSeparator::Separate() {
     // advice on dealing with that
 
     absl::string_view sample_key(sample_base, sample_base_len);
-
+    std::cout << "[samplesep] the sample key is " << sample_key << "\n";
     if (sample_map_.contains(sample_key)) {
+      std::cout << "[samplesep] found it \n";
       auto& sample_chunk = sample_map_[sample_key];
       sample_chunk.base_builder.AppendRecord(base, base_len);
       sample_chunk.qual_builder.AppendRecord(qual, base_len);
@@ -32,17 +36,19 @@ Status SampleSeparator::Separate() {
 
       // if we are at the chunk size, write it out
       if (sample_chunk.current_size == chunk_size_) {
+        std::cout << "[samplesep] writing chunk\n";
         // find the associated dataset writer and send this chunk for writing
         auto& dataset_writer = writer_map_[sample_key];
-        std::vector<agd::ObjectPool<agd::BufferPair>::ptr_type> col_bufs(3);
+        std::vector<agd::ObjectPool<agd::BufferPair>::ptr_type> col_bufs;
+        col_bufs.reserve(3);
         col_bufs.push_back(std::move(sample_chunk.base_buf));
         col_bufs.push_back(std::move(sample_chunk.qual_buf));
         col_bufs.push_back(std::move(sample_chunk.meta_buf));
-        dataset_writer->WriteChunks(col_bufs, chunk_size_,
-                                    sample_chunk.first_ordinal);
+        ERR_RETURN_IF_ERROR(dataset_writer->WriteChunks(
+            col_bufs, chunk_size_, sample_chunk.first_ordinal));
 
         if (sample_chunk.base_buf.get() != nullptr) {
-          std::cout << "the buf was not moved? what the fuck\n";
+          std::cout << "[samplesep] the buf was not moved? what the fuck\n";
         }
         // give fresh bufs for the next chunk, advance first ordinal
         sample_chunk.base_buf = std::move(bufpair_pool_.get());
@@ -57,6 +63,7 @@ Status SampleSeparator::Separate() {
 
     } else {
       // it doesnt exist, initialize
+      std::cout << "[samplesep] creating new writer for new sample\n";
       SampleChunk newchunk;
       newchunk.base_buf = std::move(bufpair_pool_.get());
       newchunk.qual_buf = std::move(bufpair_pool_.get());
@@ -70,7 +77,7 @@ Status SampleSeparator::Separate() {
       newchunk.meta_builder.AppendRecord(meta, meta_len);
       newchunk.first_ordinal = 0;
       newchunk.current_size = 1;
-      sample_map_.insert_or_assign(sample_key, newchunk);
+      sample_map_.insert_or_assign(sample_key, std::move(newchunk));
 
       // create the writer
       std::unique_ptr<agd::DatasetWriter> writer;
@@ -78,10 +85,25 @@ Status SampleSeparator::Separate() {
       ERR_RETURN_IF_ERROR(agd::DatasetWriter::CreateDatasetWriter(
           3, 1, std::string(sample_key), out_dir, {"base", "qual", "meta"},
           writer, &buf_pool_));
-      writer_map_.insert_or_assign(sample_key, writer);
+      writer_map_.insert_or_assign(sample_key, std::move(writer));
     }
 
     s = fastq_parser_->GetNextRecord(&base, &base_len, &qual, &meta, &meta_len);
+  }
+
+  // write out last chunks that weren't full size
+  for (auto& chunk : sample_map_) {
+    if (chunk.second.current_size > 0) {
+      auto& sample_chunk = chunk.second;
+      auto& dataset_writer = writer_map_[chunk.first];
+      std::vector<agd::ObjectPool<agd::BufferPair>::ptr_type> col_bufs;
+      col_bufs.reserve(3);
+      col_bufs.push_back(std::move(sample_chunk.base_buf));
+      col_bufs.push_back(std::move(sample_chunk.qual_buf));
+      col_bufs.push_back(std::move(sample_chunk.meta_buf));
+      ERR_RETURN_IF_ERROR(dataset_writer->WriteChunks(
+          col_bufs, sample_chunk.current_size, sample_chunk.first_ordinal));
+    }
   }
 
   std::cout << "[samplesep] fastq processing complete\n";
@@ -92,4 +114,3 @@ Status SampleSeparator::Separate() {
 
   return Status::OK();
 }
-

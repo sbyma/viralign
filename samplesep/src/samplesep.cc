@@ -1,31 +1,13 @@
 #include "args.h"
 #include "sample_separator.h"
 #include "fastq_parser.h"
+#include "libagd/src/filemap.h"
 #include <stdint.h>
 
 
 using namespace std;
 using namespace errors;
 using namespace std::chrono_literals;
-
-Status mmap_file(const std::string& file_path, char** file_ptr,
-                 uint64_t* file_size) {
-  const int fd = open(file_path.c_str(), O_RDONLY);
-  struct stat st;
-  if (stat(file_path.c_str(), &st) != 0) {
-    return Internal("Unable to stat file ", file_path);
-  }
-  auto size = st.st_size;
-  std::cout << "file size var is " << sizeof(size) << " bytes\n";
-  char* mapped = (char*)mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
-  if (mapped == MAP_FAILED) {
-    return Internal("Unable to map file ", file_path, ", returned ", mapped);
-  }
-
-  *file_ptr = mapped;
-  *file_size = size;
-  return Status::OK();
-}
 
 int main(int argc, char** argv) {
   args::ArgumentParser parser("samplesep", "Separate samples from paired FASTQ.");
@@ -38,9 +20,8 @@ int main(int argc, char** argv) {
                                                "AGD output chunk size [100000]",
                                                {'c', "chunksize"});
   args::PositionalList<std::string> fastq_files(
-      parser, "datasets",
-      "FASTQ  dataset to convert. Provide one for single end, two for paired "
-      "end. ");
+      parser, "data and sample",
+      "Sample first, then reads");
 
   try {
     parser.ParseCLI(argc, argv);
@@ -83,4 +64,11 @@ int main(int argc, char** argv) {
   
   SampleSeparator separator(&read_parser, &sample_parser, chunk_size, output_dir);
 
+  s = separator.Separate();
+
+  if (!s.ok()) {
+    cout << "[samplesep] error: " << s.error_message() << "\n";
+  }
+
+  return 0;
 }

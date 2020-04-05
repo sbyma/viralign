@@ -36,4 +36,5 @@ class CompressedFastqChunker {
   agd::ObjectPool<agd::Buffer>* buf_pool_;
   std::unique_ptr<std::istream> in_strm_;
   agd::ObjectPool<agd::Buffer>::ptr_type leftover_buf_;
+  bool iseof_ = false;
 };

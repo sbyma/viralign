@@ -1,11 +1,11 @@
 #include "fastq_parser.h"
 
-FastqParser::FastqParser(const char *file, uint64_t size) : start_ptr_(file), end_ptr_(file+size) {}
+FastqParser::FastqParser(const char *file, uint64_t size) : start_ptr_(file), end_ptr_(file+size), current_record_(file){}
 
 Status FastqParser::GetNextRecord(const char** bases, size_t* bases_len,
                                    const char** quals, const char** meta,
                                    size_t* meta_len) {
-  if (current_record_ == end_ptr_) {
+  if (current_record_ >= end_ptr_) {
     return ResourceExhausted("no more records in this file");
   }
 

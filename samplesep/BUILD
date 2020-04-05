@@ -8,6 +8,7 @@ cc_binary(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/container:flat_hash_map",
         "//liberr:liberr",
+        "@args//:args",
         "//libagd:libagd",
     ]
 )
