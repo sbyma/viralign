@@ -10,9 +10,9 @@ using namespace std::chrono_literals;
 
 Status ParallelAligner::Create(size_t threads, GenomeIndex* index,
                                AlignerOptions* options,
-                               InputQueueType* input_queue,
+                               InputQueueType* input_queue, size_t filter_contig_index,
                                std::unique_ptr<ParallelAligner>& aligner) {
-  aligner.reset(new ParallelAligner(index, options, input_queue));
+  aligner.reset(new ParallelAligner(index, options, input_queue, filter_contig_index));
   ERR_RETURN_IF_ERROR(aligner->Init(threads));
   return Status::OK();
 }
@@ -66,7 +66,11 @@ Status ParallelAligner::Init(size_t threads) {
         s = aligner.AlignRead(read, aln, loc);
 
         std::cout << "[ParallelAligner] aligned to location: " << aln.DebugString() << "\n";
-        builder.AppendAlignmentResult(aln);
+        if (filter_contig_index_>= 0 && aln.position().ref_index() != filter_contig_index_) {
+          builder.AppendEmpty();
+        } else {
+          builder.AppendAlignmentResult(aln);
+        }
 
         s = base_reader.GetNextRecord(&base, &base_len);
       }

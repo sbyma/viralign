@@ -9,8 +9,10 @@ Status SampleSeparator::Separate() {
   s = fastq_parser_->GetNextRecord(&base, &base_len, &qual, &meta, &meta_len);
 
   while (s.ok()) {
-    std::cout << "[samplesep] processing read:\n"
-              << std::string(base, base_len) << "\n";
+    /*std::cout << "[samplesep] processing read:\n"
+              << std::string(meta, meta_len) << "\n"
+              << std::string(base, base_len) << "\n"
+              << std::string(qual, base_len) << "\n";*/
 
     s = sample_fastq_parser_->GetNextRecord(&sample_base, &sample_base_len,
                                             &sample_qual, &sample_meta,
@@ -25,9 +27,7 @@ Status SampleSeparator::Separate() {
     // advice on dealing with that
 
     absl::string_view sample_key(sample_base, sample_base_len);
-    std::cout << "[samplesep] the sample key is " << sample_key << "\n";
     if (sample_map_.contains(sample_key)) {
-      std::cout << "[samplesep] found it \n";
       auto& sample_chunk = sample_map_[sample_key];
       sample_chunk.base_builder.AppendRecord(base, base_len);
       sample_chunk.qual_builder.AppendRecord(qual, base_len);
@@ -36,7 +36,6 @@ Status SampleSeparator::Separate() {
 
       // if we are at the chunk size, write it out
       if (sample_chunk.current_size == chunk_size_) {
-        std::cout << "[samplesep] writing chunk\n";
         // find the associated dataset writer and send this chunk for writing
         auto& dataset_writer = writer_map_[sample_key];
         std::vector<agd::ObjectPool<agd::BufferPair>::ptr_type> col_bufs;
@@ -63,7 +62,7 @@ Status SampleSeparator::Separate() {
 
     } else {
       // it doesnt exist, initialize
-      std::cout << "[samplesep] creating new writer for new sample\n";
+      std::cout << "[samplesep] creating new writer for new sample: " << sample_key << "\n";
       SampleChunk newchunk;
       newchunk.base_buf = std::move(bufpair_pool_.get());
       newchunk.qual_buf = std::move(bufpair_pool_.get());
@@ -83,7 +82,7 @@ Status SampleSeparator::Separate() {
       std::unique_ptr<agd::DatasetWriter> writer;
       auto out_dir = absl::StrCat(output_dir_, sample_key, "/");
       ERR_RETURN_IF_ERROR(agd::DatasetWriter::CreateDatasetWriter(
-          3, 1, std::string(sample_key), out_dir, {"base", "qual", "meta"},
+          1, 1, std::string(sample_key), out_dir, {"base", "qual", "meta"},
           writer, &buf_pool_));
       writer_map_.insert_or_assign(sample_key, std::move(writer));
     }
