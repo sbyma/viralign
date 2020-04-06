@@ -6,6 +6,7 @@
 #include <chrono>
 
 #include "absl/strings/str_split.h"
+#include "absl/strings/str_cat.h"
 #include "args.h"
 #include "json.hpp"
 #include "libagd/src/agd_filesystem_reader.h"
@@ -146,7 +147,9 @@ int main(int argc, char** argv) {
   auto chunk_queue = reader->GetOutputQueue();
 
   std::unique_ptr<ParallelAligner> aligner;
-  s = ParallelAligner::Create(/*threads*/1, genome_index, options.get(), chunk_queue, aligner);
+
+  // TODO filter contig index corresponding to SarsCov2
+  s = ParallelAligner::Create(/*threads*/1, genome_index, options.get(), chunk_queue, -1, aligner);
 
   if (!s.ok()) {
     std::cout << "[align-core] Unable to create ParallelAligner: " << s.error_message() << "\n";

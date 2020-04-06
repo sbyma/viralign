@@ -20,19 +20,20 @@ local_repository(
   path = "third_party/zstr",
 )
 
+
 http_archive(
-    name = "gtest",
-    url = "https://github.com/google/googletest/archive/release-1.7.0.zip",
-    sha256 = "b58cb7547a28b2c718d1e38aee18a3659c9e3ff52440297e965f5edffe34b6d0",
-    build_file = "@//src:gtest.BUILD",
-    strip_prefix = "googletest-release-1.7.0",
+    name = "com_google_absl",
+    url = "https://github.com/abseil/abseil-cpp/archive/20200225.1.zip",
+    sha256 = "7f9dffeaa566b9688600cdedaff85700bd0c4dbf8373a2764add466efd165b8d",
+    strip_prefix = "abseil-cpp-20200225.1",
 )
 
-git_repository(
-  name="com_google_absl",
-  remote="https://github.com/abseil/abseil-cpp",
-  branch="lts_2018_12_18"
-)
+#git_repository(
+  #name="com_google_absl",
+  #remote="https://github.com/abseil/abseil-cpp",
+  #branch="lts_2018_12_18"
+#)
+
 # rules_cc defines rules for generating C++ code from Protocol Buffers.
 http_archive(
     name = "rules_cc",
