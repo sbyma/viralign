@@ -103,6 +103,8 @@ Status AGDCephReader::Initialize(const std::string& cluster_name,
     std::cout << "[AGDCephReader] Connected to the cluster." << std::endl;
   }
 
+  output_queue_ = std::make_unique<OutputQueueType>(5);
+
   auto read_and_parse_func = [this]() {
     RecordParser parser;
     std::string record_id;
