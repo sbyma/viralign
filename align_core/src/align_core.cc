@@ -115,6 +115,13 @@ int main(int argc, char** argv) {
     if (done) break;
   }
 
+  /*if (ceph_json_arg) {
+    // we will do IO from ceph
+
+  } else {
+    // we will IO from file system
+  }*/
+
   std::string agd_meta_path = args::get(agd_metadata_args);
 
   std::ifstream i(agd_meta_path);
@@ -183,6 +190,10 @@ int main(int argc, char** argv) {
   reader->Stop();
   aligner->Stop();
   writer->Stop();
+
+  agd_metadata["columns"].push_back("aln");
+  std::ofstream o(agd_meta_path);
+  o << agd_metadata;
 
   /*std::unique_ptr<agd::AGDBufferedDataset> dataset;
   auto s = agd::AGDBufferedDataset::Create(agd_meta_path, dataset);
