@@ -14,7 +14,7 @@ class ParallelAligner {
   using OutputQueueType = ConcurrentQueue<OutputQueueItem>;
 
   static Status Create(size_t threads, GenomeIndex* index,
-                       AlignerOptions* options, InputQueueType* input_queue,
+                       AlignerOptions* options, InputQueueType* input_queue, size_t filter_contig_index,
                        std::unique_ptr<ParallelAligner>& aligner);
 
   OutputQueueType* GetOutputQueue() { return output_queue_.get(); }
@@ -23,8 +23,8 @@ class ParallelAligner {
 
 
  private:
-  ParallelAligner(GenomeIndex* index, AlignerOptions* options, InputQueueType* input_queue)
-      : genome_index_(index), options_(options), input_queue_(input_queue) {}
+  ParallelAligner(GenomeIndex* index, AlignerOptions* options, InputQueueType* input_queue,  size_t filter_contig_index)
+      : genome_index_(index), options_(options), input_queue_(input_queue), filter_contig_index_(filter_contig_index) {}
 
   Status Init(size_t threads);
 
@@ -36,4 +36,7 @@ class ParallelAligner {
   InputQueueType* input_queue_;
   std::unique_ptr<OutputQueueType> output_queue_;
   volatile bool done_ = false;
+
+  // if not -1, output 0 entry for any alignment not mapping to this contig
+  int filter_contig_index_ = -1;
 };

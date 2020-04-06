@@ -33,11 +33,11 @@ void ColumnBuilder::SetBufferPair(BufferPair* data) {
 
 void ColumnBuilder::AppendRecord(const char* data, const size_t size) {
   if (size > format::MAX_INDEX_SIZE)
-    std::cout << "WARNING: Appending data larger than " << UINT8_MAX
+    std::cout << "WARNING: Appending data larger than " << format::MAX_INDEX_SIZE
               << " bytes not supported by AGD.";
   if (size > 0)  // could be a zero record
     data_->AppendBuffer(data, size);
-  format::RelativeIndex cSize = static_cast<uint16_t>(size);
+  format::RelativeIndex cSize = static_cast<format::RelativeIndex>(size);
   index_->AppendBuffer(reinterpret_cast<const char*>(&cSize), sizeof(cSize));
 }
 

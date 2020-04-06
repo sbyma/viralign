@@ -125,6 +125,7 @@ void DatasetWriter::compress_func() {
     // compress the buffer into a fresh pool buffer
     auto compress_buf = buf_pool_->get();
     compress_buf->reserve(item.buf->data().size() + item.buf->index().size());
+
     compress_buf->reset();
     AppendingGZIPCompressor compressor(*compress_buf.get());
     Status s = Status::OK();
@@ -140,6 +141,11 @@ void DatasetWriter::compress_func() {
       exit(0);
     }
     s = compressor.appendGZIP(item.buf->data().data(), item.buf->data().size());
+    if (!s.ok()) {
+      std::cout << "Error: couldn't init compressor\n";
+      exit(0);
+    }
+    s = compressor.finish();
     if (!s.ok()) {
       std::cout << "Error: couldn't init compressor\n";
       exit(0);
