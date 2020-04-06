@@ -115,7 +115,10 @@ Status AGDCephReader::Initialize(const std::string& cluster_name,
       OutputQueueItem out_item;
       out_item.name = std::move(item.objName);
 
-      for (auto& [objId, io_ctx] : metadatas) {
+      for (auto& meta : metadatas) {
+        std::string objId;
+        librados::IoCtx io_ctx;
+        std::tie(objId, io_ctx) = meta;
         auto read_buf = read_file(objId, io_ctx);
         auto out_buf = buf_pool_->get();
         uint64_t first_ordinal;
