@@ -3,6 +3,7 @@ cc_binary(
     name = "ceph_reader",
     srcs = glob(["src/*.cc", "src/*.h"]),
     copts = ["-std=c++14"],
+    linkopts = ["-lrados"],
     visibility = ["//visibility:public"],
     deps = ["@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
