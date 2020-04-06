@@ -21,6 +21,8 @@ void CheckStatus(Status& s) {
   }
 }
 
+constexpr absl::string_view SarsCov2Contig = "MN985325";
+
 int main(int argc, char** argv) {
   args::ArgumentParser parser(
       "align-core",
@@ -83,12 +85,35 @@ int main(int argc, char** argv) {
     genome_location = args::get(genome_location_arg);
   }
 
+  std::cout << "[align-core] Loading genome index: " << genome_location << " ...\n";
   GenomeIndex* genome_index = GenomeIndex::loadFromDirectory(
       const_cast<char*>(genome_location.c_str()), true, true);
 
   if (!genome_index) {
     std::cout << "Index load failed.\n";
     return 0;
+  }
+
+  const Genome* genome = genome_index->getGenome();
+
+  const Genome::Contig* contigs = genome->getContigs();
+  auto num_contigs = genome->getNumContigs();
+
+  std::cout << "Genome loaded, there are " << num_contigs << " contigs.\n";
+  
+  int sars_cov2_contig_idx = -1;
+  for (int i = 0; i < num_contigs; i++) {
+    auto contig_name = absl::string_view(contigs[i].name, contigs[i].nameLength);
+    if (absl::StrContains(contig_name, SarsCov2Contig)) {
+      sars_cov2_contig_idx = i;
+      break;
+    }
+  }
+
+  if (sars_cov2_contig_idx == -1) {
+    std::cout << "[align-core] did not find covid contig index\n";
+  } else {
+    std::cout << "[align-core] SarsCov2 contig index is " << sars_cov2_contig_idx << "\n";
   }
 
   std::unique_ptr<AlignerOptions> options =
