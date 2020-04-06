@@ -18,7 +18,7 @@ Status AGDFileSystemReader::Create(
 }
 
 Status AGDFileSystemReader::Initialize(size_t threads) {
-  
+
   output_queue_ = std::make_unique<OutputQueueType>(5);
   inter_queue_ = std::make_unique<InterQueueType>(5);
 
@@ -38,7 +38,7 @@ Status AGDFileSystemReader::Initialize(size_t threads) {
 
         if (!s.ok()) {
           std::cout << "[AGDFSReader] WARNING: Could not map file. Thread exiting.\n";
-          return; 
+          return;
         }
         out_item.mapped_files.push_back(mapped_file);
       }
@@ -72,13 +72,13 @@ Status AGDFileSystemReader::Initialize(size_t threads) {
 
         if (!s.ok()) {
           std::cout << "[AGDFSReader] WARNING: Error decompressing chunk: " << s.error_message() << "\n";
-          return; 
+          return;
         }
         out_item.col_bufs.push_back(std::move(buf));
         out_item.chunk_size = num_records;
         out_item.first_ordinal = first_ordinal;
       }
-      
+
       //std::cout << "[AGDFSReader] pushing to output queue.\n";
       output_queue_->push(std::move(out_item));
     }
@@ -92,7 +92,7 @@ Status AGDFileSystemReader::Initialize(size_t threads) {
     t = std::thread(parser_func);
   }
 
-  return Status::OK(); 
+  return Status::OK();
 }
 
 
@@ -119,4 +119,4 @@ void AGDFileSystemReader::Stop() {
   }
 }
 
-}
+} // namespace agd

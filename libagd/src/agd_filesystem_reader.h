@@ -13,7 +13,7 @@ using namespace errors;
 
 namespace agd {
 
-// read chunks from multiple columsn from FS and put them in a queue
+// read chunks from multiple columns from FS and put them in a queue
 // input queue contains names of chunks to read
 class AGDFileSystemReader {
  public:
