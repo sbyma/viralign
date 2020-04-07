@@ -27,7 +27,7 @@ Status CephManager::Run(absl::string_view agd_meta_path,
 
   std::ifstream ci(ceph_config_json_path.data());
   json ceph_config_json;
-  i >> ceph_config_json;
+  ci >> ceph_config_json;
   ci.close();
 
   const auto& records = agd_metadata["records"];
