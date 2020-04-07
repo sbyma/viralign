@@ -16,7 +16,7 @@ class ParallelAligner {
   using OutputQueueType = agd::WriteQueueType;
 
   static errors::Status Create(size_t threads, GenomeIndex* index,
-                       AlignerOptions* options, InputQueueType* input_queue, size_t filter_contig_index,
+                       AlignerOptions* options, InputQueueType* input_queue, int filter_contig_index,
                        std::unique_ptr<ParallelAligner>& aligner);
 
   OutputQueueType* GetOutputQueue() { return output_queue_.get(); }
