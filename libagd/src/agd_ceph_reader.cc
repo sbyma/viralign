@@ -70,10 +70,10 @@ std::vector<std::pair<std::string, librados::IoCtx>> AGDCephReader::create_io_ct
     }
 
     std::string objId = item.objName + "." + col;
-    metadatas.push_back(std::make_pair(objId, io_ctx));
+    metadatas.push_back(std::make_pair(std::move(objId), std::move(io_ctx)));
   }
 
-  return metadatas;
+  return std::move(metadatas);
 }
 
 Status AGDCephReader::Initialize(const std::string& cluster_name,
@@ -111,16 +111,17 @@ Status AGDCephReader::Initialize(const std::string& cluster_name,
 
     while (!done_) {
       InputQueueItem item;
+      std::cout << "[AGDCephReader] Trying to pop queue" << std::endl;
       if (!input_queue_->pop(item)) continue;
+      std::cout << "[AGDCephReader] input_queue = {" << item.objName << ", " << item.pool << "}" << std::endl;
 
       auto metadatas = create_io_ctxs(item);
       OutputQueueItem out_item;
       out_item.name = std::move(item.objName);
 
-      for (auto& meta : metadatas) {
-        std::string objId;
-        librados::IoCtx io_ctx;
-        std::tie(objId, io_ctx) = meta;
+      for (auto&& meta : metadatas) {
+        std::string objId = std::move(meta.first);
+        librados::IoCtx io_ctx = std::move(meta.second);
         auto read_buf = read_file(objId, io_ctx);
         auto out_buf = buf_pool_->get();
         uint64_t first_ordinal;
