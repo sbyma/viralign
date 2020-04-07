@@ -6,7 +6,7 @@
 #include "concurrent_queue/concurrent_queue.h"
 
 namespace agd {
-  
+
   // filename or ceph object (name + pool)
   // AGDFSReader will ignore pool
   struct ReadQueueItem {
@@ -19,6 +19,7 @@ namespace agd {
 
   // bufs containing decompressed columns for processing
   struct ChunkQueueItem {
+    std::string pool;
     std::vector<ObjectPool<Buffer>::ptr_type> col_bufs;
     uint32_t chunk_size;
     uint64_t first_ordinal;
@@ -30,6 +31,7 @@ namespace agd {
 
   // buf pair (data, index) to be written to columns
   struct WriteQueueItem {
+    std::string pool;
     std::vector<ObjectPool<BufferPair>::ptr_type> col_buf_pairs;
     uint32_t chunk_size;
     uint64_t first_ordinal;

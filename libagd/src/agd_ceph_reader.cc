@@ -127,6 +127,7 @@ Status AGDCephReader::Initialize(const std::string& cluster_name,
       create_io_ctx(item, name_space, &io_ctx);
 
       OutputQueueItem out_item;
+      out_item.pool = std::move(item.pool);
       out_item.name = std::move(item.objName);
 
       for (const auto& col : columns_) {
