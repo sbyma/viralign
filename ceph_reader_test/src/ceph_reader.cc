@@ -9,9 +9,10 @@
 int main(int argc, char** argv) {
 
   std::vector<std::string> columns = {"base", "qual", "meta"};
-  const std::string& cluster_name = "ragnar";
-  const std::string& user_name = "client.lauzhack";
-  const std::string& ceph_conf_file = "/scratch/ceph_conf/lauzhack.conf";
+  const std::string cluster_name = "ragnar";
+  const std::string user_name = "client.lauzhack";
+  const std::string name_space = "lauzhack";
+  const std::string ceph_conf_file = "/scratch/ceph_conf/lauzhack.conf";
   std::unique_ptr<agd::AGDCephReader::InputQueueType> input_queue =
     std::make_unique<agd::AGDCephReader::InputQueueType>(5);
   size_t threads = 1;
@@ -23,7 +24,7 @@ int main(int argc, char** argv) {
   inputItem.pool = "lauzhack";
   input_queue.get()->push(inputItem);
 
-  auto s = agd::AGDCephReader::Create(columns, cluster_name, user_name,
+  auto s = agd::AGDCephReader::Create(columns, cluster_name, user_name, name_space,
                                       ceph_conf_file, input_queue.get(),
                                       threads, buf_pool, reader);
 
@@ -34,15 +35,7 @@ int main(int argc, char** argv) {
   }
 
   auto chunk_queue = reader->GetOutputQueue();
-
   reader->Stop();
-
-  while (!chunk_queue->empty()) {
-    agd::AGDCephReader::OutputQueueItem item;
-    auto popped = chunk_queue->pop(item);
-    printf("output queue contains \"%s\" with a chunk size of %d. The first ordinal is %d\n",
-      item.name.c_str(), item.chunk_size, item.first_ordinal);
-  }
 
   return EXIT_SUCCESS;
 }

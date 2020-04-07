@@ -8,78 +8,19 @@ namespace agd {
 Status AGDCephReader::Create(std::vector<std::string> columns,
                              const std::string& cluster_name,
                              const std::string& user_name,
+                             const std::string& name_space,
                              const std::string& ceph_conf_file,
                              InputQueueType* input_queue,
                              size_t threads,
                              ObjectPool<Buffer>& buf_pool,
                              std::unique_ptr<AGDCephReader>& reader) {
   reader.reset(new AGDCephReader(columns, buf_pool, input_queue));
-  return reader->Initialize(cluster_name, user_name, ceph_conf_file, threads);
+  return reader->Initialize(cluster_name, user_name, name_space, ceph_conf_file, threads);
 }
 
-ceph::bufferlist AGDCephReader::read_file(const std::string& objId, librados::IoCtx& io_ctx) {
-  int ret;
-  size_t file_size;
-  time_t pmtime;
-  ret = io_ctx.stat(objId, &file_size, &pmtime);
-  if (ret != 0) {
-    std::cerr << "[AGDCephReader] io_ctx.stat() return " << ret << " for key " << objId << std::endl;
-    exit(EXIT_FAILURE);
-  }
-
-  size_t data_read = 0;
-  size_t read_len;
-  size_t size_to_read = 4 * 1024 * 1024; // 4 MB. I chose this arbitrarily.
-
-  librados::bufferlist read_buf;
-  while (data_read < file_size) {
-    read_len = std::min(size_to_read, file_size - data_read);
-
-    // Create I/O Completion.
-    librados::AioCompletion *read_completion = librados::Rados::aio_create_completion();
-    ret = io_ctx.aio_read(objId, read_completion, &read_buf, read_len, data_read);
-    if (ret < 0) {
-      std::cerr << "[AGDCephReader] Couldn't start read object! error " << ret << std::endl;
-      exit(EXIT_FAILURE);
-    }
-
-    // Wait for the request to complete, and check that it succeeded.
-    read_completion->wait_for_complete();
-    ret = read_completion->get_return_value();
-    if (ret < 0) {
-      std::cerr << "[AGDCephReader] Couldn't read object! error " << ret << std::endl;
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  return read_buf;
-}
-
-std::vector<std::pair<std::string, librados::IoCtx>> AGDCephReader::create_io_ctxs(const InputQueueItem& item) {
-  std::vector<std::pair<std::string, librados::IoCtx>> metadatas;
-
-  // Create an IoCtx per column to read.
-  for (const auto& col : columns_) {
-    int ret;
-    librados::IoCtx io_ctx;
-
-    ret = cluster_.ioctx_create(item.pool.c_str(), io_ctx);
-    if (ret < 0) {
-      std::cerr << "[AGDCephReader] Couldn't set up ioctx! error " << ret << ". Thread exiting."<< std::endl;
-      exit(EXIT_FAILURE);
-    }
-
-    std::string objId = item.objName + "." + col;
-    metadatas.push_back(std::make_pair(std::move(objId), std::move(io_ctx)));
-  }
-
-  return std::move(metadatas);
-}
-
-Status AGDCephReader::Initialize(const std::string& cluster_name,
-                                 const std::string& user_name,
-                                 const std::string& ceph_conf_file,
-                                 size_t threads) {
+Status AGDCephReader::setup_ceph_connection(const std::string& cluster_name,
+                                            const std::string& user_name,
+                                            const std::string& ceph_conf_file) {
   int ret = 0;
 
   ret = cluster_.init2(user_name.c_str(), cluster_name.c_str(), 0);
@@ -103,9 +44,76 @@ Status AGDCephReader::Initialize(const std::string& cluster_name,
     std::cout << "[AGDCephReader] Connected to the cluster." << std::endl;
   }
 
+  return Status::OK();
+}
+
+void AGDCephReader::create_io_ctx(const InputQueueItem& item,
+                                  const std::string& name_space,
+                                  librados::IoCtx* io_ctx) {
+  int ret = cluster_.ioctx_create(item.pool.c_str(), *io_ctx);
+  if (ret < 0) {
+    std::cerr << "[AGDCephReader] Couldn't set up ioctx! error " << ret << ". Thread exiting."<< std::endl;
+    exit(EXIT_FAILURE);
+  } else {
+    io_ctx->set_namespace(name_space);
+    std::cout << "[AGDCephReader] Created ioctx for namespace " << name_space << "." << std::endl;
+  }
+}
+
+ceph::bufferlist AGDCephReader::read_file(const std::string& objId, librados::IoCtx& io_ctx) {
+  int ret;
+  size_t file_size;
+  time_t pmtime;
+  ret = io_ctx.stat(objId, &file_size, &pmtime);
+  if (ret != 0) {
+    std::cerr << "[AGDCephReader] io_ctx.stat() return " << ret << " for key " << objId << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  std::cout << "[AGDCephReader] filesize = " << file_size << "." << std::endl;
+
+  size_t data_read = 0;
+  size_t read_len;
+  size_t size_to_read = 4 * 1024 * 1024; // 4 MB. I chose this arbitrarily.
+
+  librados::bufferlist read_buf;
+  while (data_read < file_size) {
+    read_len = std::min(size_to_read, file_size - data_read);
+
+    std::cout << "[AGDCephReader] Trying to read " << read_len << " bytes from " << objId << "." << std::endl;
+
+    // Create I/O Completion.
+    librados::AioCompletion *read_completion = librados::Rados::aio_create_completion();
+    ret = io_ctx.aio_read(objId, read_completion, &read_buf, read_len, data_read);
+    if (ret < 0) {
+      std::cerr << "[AGDCephReader] Couldn't start read object! error " << ret << std::endl;
+      exit(EXIT_FAILURE);
+    }
+
+    data_read += read_len;
+
+    // Wait for the request to complete, and check that it succeeded.
+    read_completion->wait_for_complete();
+    ret = read_completion->get_return_value();
+    if (ret < 0) {
+      std::cerr << "[AGDCephReader] Couldn't read object! error " << ret << std::endl;
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  return read_buf;
+}
+
+Status AGDCephReader::Initialize(const std::string& cluster_name,
+                                 const std::string& user_name,
+                                 const std::string& name_space,
+                                 const std::string& ceph_conf_file,
+                                 size_t threads) {
+  setup_ceph_connection(cluster_name, user_name, ceph_conf_file);
+
   output_queue_ = std::make_unique<OutputQueueType>(5);
 
-  auto read_and_parse_func = [this]() {
+  auto read_and_parse_func = [this, name_space]() {
     RecordParser parser;
     std::string record_id;
 
@@ -115,13 +123,14 @@ Status AGDCephReader::Initialize(const std::string& cluster_name,
       if (!input_queue_->pop(item)) continue;
       std::cout << "[AGDCephReader] input_queue = {" << item.objName << ", " << item.pool << "}" << std::endl;
 
-      auto metadatas = create_io_ctxs(item);
+      librados::IoCtx io_ctx;
+      create_io_ctx(item, name_space, &io_ctx);
+
       OutputQueueItem out_item;
       out_item.name = std::move(item.objName);
 
-      for (auto&& meta : metadatas) {
-        std::string objId = std::move(meta.first);
-        librados::IoCtx io_ctx = std::move(meta.second);
+      for (const auto& col : columns_) {
+        std::string objId = out_item.name + "." + col;
         auto read_buf = read_file(objId, io_ctx);
         auto out_buf = buf_pool_->get();
         uint64_t first_ordinal;

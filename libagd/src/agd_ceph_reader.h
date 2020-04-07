@@ -35,6 +35,7 @@ class AGDCephReader {
   static Status Create(std::vector<std::string> columns,
                        const std::string& cluster_name,
                        const std::string& user_name,
+                       const std::string& name_space,
                        const std::string& ceph_conf_file,
                        InputQueueType* input_queue,
                        size_t threads,
@@ -54,11 +55,18 @@ class AGDCephReader {
 
   Status Initialize(const std::string& cluster_name,
                     const std::string& user_name,
+                    const std::string& name_space,
                     const std::string& ceph_conf_file,
                     size_t threads);
 
-  ceph::bufferlist read_file(const std::string& objId, librados::IoCtx& io_ctx);
-  std::vector<std::pair<std::string, librados::IoCtx>> create_io_ctxs(const InputQueueItem& item);
+  Status setup_ceph_connection(const std::string& cluster_name,
+                               const std::string& user_name,
+                               const std::string& ceph_conf_file);
+  void create_io_ctx(const InputQueueItem& item,
+                     const std::string& name_space,
+                     librados::IoCtx* io_ctx);
+  ceph::bufferlist read_file(const std::string& objId,
+                             librados::IoCtx& io_ctx);
 
   std::vector<std::string> columns_;
   ObjectPool<Buffer>* buf_pool_;  // does not own
