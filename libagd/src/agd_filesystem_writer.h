@@ -10,6 +10,7 @@
 #include "format.h"
 #include "liberr/errors.h"
 #include "object_pool.h"
+#include "queue_defs.h"
 
 using namespace errors;
 
@@ -19,13 +20,8 @@ namespace agd {
 // input queue contains names of chunks to read
 class AGDFileSystemWriter {
  public:
-  struct InputQueueItem {
-    std::vector<ObjectPool<BufferPair>::ptr_type> col_buf_pairs;
-    uint32_t chunk_size;
-    uint64_t first_ordinal;
-    std::string name;  // full path without ext, e.g. path/to/dataset/test_1000
-  };
-  using InputQueueType = ConcurrentQueue<InputQueueItem>;
+  using InputQueueItem = agd::WriteQueueItem;
+  using InputQueueType = agd::WriteQueueType;
 
   static Status Create(std::vector<std::string> columns,
                        InputQueueType* input_queue, size_t threads,

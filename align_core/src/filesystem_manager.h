@@ -7,5 +7,5 @@
 
 class FileSystemManager {
   public:
-    static Status Run(absl::string_view agd_meta_path, GenomeIndex* index, AlignerOptions* options);
+    static errors::Status Run(absl::string_view agd_meta_path, GenomeIndex* index, AlignerOptions* options);
 };

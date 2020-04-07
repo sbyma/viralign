@@ -10,6 +10,7 @@
 #include "concurrent_queue/concurrent_queue.h"
 #include "liberr/errors.h"
 #include "object_pool.h"
+#include "queue_defs.h"
 
 using namespace errors;
 
@@ -19,18 +20,10 @@ namespace agd {
 // input queue contains name, pool pairs of chunks to read
 class AGDCephReader {
  public:
-  using InputQueueItem = struct {
-    std::string pool;
-    std::string objName;
-  };
-  using InputQueueType = ConcurrentQueue<InputQueueItem>;
-  struct OutputQueueItem {
-    std::vector<ObjectPool<Buffer>::ptr_type> col_bufs;
-    uint32_t chunk_size;
-    uint64_t first_ordinal;
-    std::string name;
-  };
-  using OutputQueueType = ConcurrentQueue<OutputQueueItem>;
+  using InputQueueItem = agd::ReadQueueItem;
+  using InputQueueType = agd::ReadQueueType;
+  using OutputQueueItem = agd::ChunkQueueItem;
+  using OutputQueueType = agd::ChunkQueueType;
 
   static Status Create(std::vector<std::string> columns,
                        const std::string& cluster_name,

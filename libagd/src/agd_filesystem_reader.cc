@@ -30,7 +30,7 @@ Status AGDFileSystemReader::Initialize(size_t threads) {
       InterQueueItem out_item;
       out_item.mapped_files.reserve(columns_.size());
       for (const auto& col : columns_) {
-        auto filepath = absl::StrCat(item, ".", col);
+        auto filepath = absl::StrCat(item.objName, ".", col);
 
         //std::cout << "[AGDFSReader] reader mapping file: " << filepath << "\n";
         std::pair<char*, uint64_t> mapped_file;
@@ -44,7 +44,7 @@ Status AGDFileSystemReader::Initialize(size_t threads) {
       }
 
       //std::cout << "[AGDFSReader] pushing to inter_queue_: \n";
-      out_item.name = std::move(item);
+      out_item.name = std::move(item.objName);
       inter_queue_->push(std::move(out_item));
     }
   };

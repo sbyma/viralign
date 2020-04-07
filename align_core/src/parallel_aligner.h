@@ -1,19 +1,21 @@
 #pragma once
 
+#include <vector>
+#include <thread>
 #include "snap_single_aligner.h"
-#include "libagd/src/agd_filesystem_reader.h"
-#include "libagd/src/agd_filesystem_writer.h"
+#include "libagd/src/queue_defs.h"
 #include "libagd/src/buffer_pair.h"
+#include "liberr/errors.h"
 // class to manage aligning chunks in parallel
 
 class ParallelAligner {
  public:
-  using InputQueueItem = agd::AGDFileSystemReader::OutputQueueItem;
-  using InputQueueType = ConcurrentQueue<InputQueueItem>;
-  using OutputQueueItem = agd::AGDFileSystemWriter::InputQueueItem;
-  using OutputQueueType = ConcurrentQueue<OutputQueueItem>;
+  using InputQueueItem = agd::ChunkQueueItem;
+  using InputQueueType = agd::ChunkQueueType;
+  using OutputQueueItem = agd::WriteQueueItem;
+  using OutputQueueType = agd::WriteQueueType;
 
-  static Status Create(size_t threads, GenomeIndex* index,
+  static errors::Status Create(size_t threads, GenomeIndex* index,
                        AlignerOptions* options, InputQueueType* input_queue, size_t filter_contig_index,
                        std::unique_ptr<ParallelAligner>& aligner);
 
@@ -26,7 +28,7 @@ class ParallelAligner {
   ParallelAligner(GenomeIndex* index, AlignerOptions* options, InputQueueType* input_queue,  size_t filter_contig_index)
       : genome_index_(index), options_(options), input_queue_(input_queue), filter_contig_index_(filter_contig_index) {}
 
-  Status Init(size_t threads);
+  errors::Status Init(size_t threads);
 
   std::vector<std::thread> aligner_threads_;
   agd::ObjectPool<agd::BufferPair> bufpair_pool_;

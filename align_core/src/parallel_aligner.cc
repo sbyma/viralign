@@ -7,6 +7,7 @@
 #include "libagd/src/column_builder.h"
 
 using namespace std::chrono_literals;
+using namespace errors;
 
 Status ParallelAligner::Create(size_t threads, GenomeIndex* index,
                                AlignerOptions* options,
