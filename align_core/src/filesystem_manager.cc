@@ -13,7 +13,8 @@ using json = nlohmann::json;
 using namespace std::chrono_literals;
 
 Status FileSystemManager::Run(absl::string_view agd_meta_path,
-                              GenomeIndex* index, AlignerOptions* options) {
+                              int filter_contig_index, GenomeIndex* index,
+                              AlignerOptions* options) {
   std::ifstream i(agd_meta_path.data());
   json agd_metadata;
   i >> agd_metadata;
@@ -43,7 +44,7 @@ Status FileSystemManager::Run(absl::string_view agd_meta_path,
 
   // TODO filter contig index corresponding to SarsCov2
   ERR_RETURN_IF_ERROR(ParallelAligner::Create(/*threads*/ 1, index, options,
-                                              chunk_queue, -1, aligner));
+                                              chunk_queue, filter_contig_index, aligner));
 
   auto aln_queue = aligner->GetOutputQueue();
 
@@ -56,8 +57,7 @@ Status FileSystemManager::Run(absl::string_view agd_meta_path,
   for (const auto& rec : records) {
     agd::ReadQueueItem item;
 
-    item.objName =
-        absl::StrCat(file_path_base, rec["path"].get<std::string>());
+    item.objName = absl::StrCat(file_path_base, rec["path"].get<std::string>());
     std::cout << "chunk path is: " << item.objName << "\n";
 
     input_queue->push(std::move(item));

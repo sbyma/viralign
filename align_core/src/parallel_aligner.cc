@@ -11,7 +11,7 @@ using namespace errors;
 
 Status ParallelAligner::Create(size_t threads, GenomeIndex* index,
                                AlignerOptions* options,
-                               InputQueueType* input_queue, size_t filter_contig_index,
+                               InputQueueType* input_queue, int filter_contig_index,
                                std::unique_ptr<ParallelAligner>& aligner) {
   aligner.reset(new ParallelAligner(index, options, input_queue, filter_contig_index));
   ERR_RETURN_IF_ERROR(aligner->Init(threads));
