@@ -91,7 +91,6 @@ Status AGDFileSystemWriter::Initialize(size_t threads) {
 
       std::cout << "[AGDFSWriter] dataset name is " << name << "\n";
       for (auto& col : columns_) {
-        auto filepath = absl::StrCat(item.name, ".", col);
 
         auto& buf = item.col_bufs[buf_idx];
 
@@ -122,6 +121,7 @@ Status AGDFileSystemWriter::Initialize(size_t threads) {
         }
         out_file.close();
         num_written_++;
+        buf_idx++;
       }
     }
   };

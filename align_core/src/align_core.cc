@@ -147,13 +147,13 @@ int main(int argc, char** argv) {
     // we will do IO from ceph
 
     const auto& ceph_conf_json_path = args::get(ceph_json_arg);
-    s = CephManager::Run(agd_meta_path, ceph_conf_json_path, genome_index,
+    s = CephManager::Run(agd_meta_path, ceph_conf_json_path, sars_cov2_contig_idx, genome_index,
                          options.get());
 
   } else {
     // we will IO from file system
 
-    s = FileSystemManager::Run(agd_meta_path, genome_index, options.get());
+    s = FileSystemManager::Run(agd_meta_path, sars_cov2_contig_idx, genome_index, options.get());
   }
 
   if (!s.ok()) {

@@ -62,6 +62,14 @@ http_archive(
   build_file = "snap.BUILD"
 )
 
+http_archive(
+  name = "redox",
+  urls = ["https://github.com/hmartiro/redox/archive/master.zip"],
+  sha256 = "c88db2ef26ffb475795e2a14c1836356c4e196d4d3b15ed6c8b094d48689bf4e",
+  build_file = "redox.BUILD",
+    strip_prefix = "redox-master",
+)
+
 load("@rules_cc//cc:repositories.bzl", "rules_cc_dependencies")
 rules_cc_dependencies()
 
