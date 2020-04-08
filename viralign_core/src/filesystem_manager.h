@@ -9,5 +9,5 @@ class FileSystemManager {
  public:
   static errors::Status Run(agd::ReadQueueType* input_queue, int max_records,
                             int filter_contig_index, GenomeIndex* index,
-                            AlignerOptions* options);
+                            AlignerOptions* options, size_t threads);
 };

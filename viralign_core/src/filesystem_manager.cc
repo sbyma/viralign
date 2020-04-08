@@ -14,7 +14,7 @@ using namespace std::chrono_literals;
 
 Status FileSystemManager::Run(agd::ReadQueueType* input_queue, int max_records,
                               int filter_contig_index, GenomeIndex* index,
-                              AlignerOptions* options) {
+                              AlignerOptions* options, size_t threads) {
 
   std::vector<std::string> columns = {"base", "qual"};
 
@@ -27,7 +27,7 @@ Status FileSystemManager::Run(agd::ReadQueueType* input_queue, int max_records,
 
   std::unique_ptr<ParallelAligner> aligner;
 
-  ERR_RETURN_IF_ERROR(ParallelAligner::Create(/*threads*/ 1, index, options,
+  ERR_RETURN_IF_ERROR(ParallelAligner::Create(threads, index, options,
                                               chunk_queue, filter_contig_index, aligner));
 
   auto aln_queue = aligner->GetOutputQueue();

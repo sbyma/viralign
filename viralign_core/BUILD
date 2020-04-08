@@ -1,5 +1,5 @@
 cc_binary(
-  name = "align-core",
+  name = "viralign-core",
   srcs = glob(["src/*.cc", "src/*.h"]),
   copts = ["-std=c++14"],
   linkopts = ["-lev", "-lhiredis"],

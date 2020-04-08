@@ -39,6 +39,8 @@ Status RedoxFetcher::Run() {
         j = json::parse(cmd.reply());
         item.objName = j["obj_name"];
         item.pool = j["pool"];  // will be empty if data is in FS
+        std::cout << "[RedoxFetcher] pull queue item with name: "
+                  << item.objName << " and pool: " << item.pool << "\n";
         input_queue_->push(std::move(item));
       }
 

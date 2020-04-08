@@ -48,14 +48,15 @@ Status AddColumn(const std::string& agd_meta_path) {
 }
 
 int main(int argc, char** argv) {
+  // TODO Separate thread args for other stages e.g. IO, parsing, compression?
   args::ArgumentParser parser(
-      "align-core",
+      "viralign-core",
       "Align reads using SNAP from either Ceph or Local disk AGD files, only "
       "logging SarsCov2 mapping reads (for now).");
   args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
   args::ValueFlag<unsigned int> threads_arg(
       parser, "threads",
-      absl::StrCat("Number of threads to use for all stages [",
+      absl::StrCat("Number of threads to use for all alignment [",
                    std::thread::hardware_concurrency(), "]"),
       {'t', "threads"});
   args::ValueFlag<std::string> redis_arg(
@@ -104,6 +105,8 @@ int main(int argc, char** argv) {
     threads = std::thread::hardware_concurrency();
   }
 
+  std::cout << "[viralign-core] Using " << threads << " threads for alignment\n";
+
   std::string snap_cmd("");
   if (snap_args_arg) {
     snap_cmd = args::get(snap_args_arg);
@@ -111,19 +114,19 @@ int main(int argc, char** argv) {
 
   std::string genome_location;
   if (!genome_location_arg) {
-    std::cout << "[align-core] Genome index is required\n";
+    std::cout << "[viralign-core] Genome index is required\n";
     exit(0);
   } else {
     genome_location = args::get(genome_location_arg);
   }
 
-  std::cout << "[align-core] Loading genome index: " << genome_location
+  std::cout << "[viralign-core] Loading genome index: " << genome_location
             << " ...\n";
   GenomeIndex* genome_index = GenomeIndex::loadFromDirectory(
       const_cast<char*>(genome_location.c_str()), true, true);
 
   if (!genome_index) {
-    std::cout << "[align-core] Index load failed.\n";
+    std::cout << "[viralign-core] Index load failed.\n";
     return 0;
   }
 
@@ -132,7 +135,7 @@ int main(int argc, char** argv) {
   const Genome::Contig* contigs = genome->getContigs();
   auto num_contigs = genome->getNumContigs();
 
-  std::cout << "[align-core] Genome loaded, there are " << num_contigs
+  std::cout << "[viralign-core] Genome loaded, there are " << num_contigs
             << " contigs.\n";
 
   int sars_cov2_contig_idx = -1;
@@ -146,9 +149,9 @@ int main(int argc, char** argv) {
   }
 
   if (sars_cov2_contig_idx == -1) {
-    std::cout << "[align-core] did not find covid contig index\n";
+    std::cout << "[viralign-core] did not find covid contig index\n";
   } else {
-    std::cout << "[align-core] SarsCov2 contig index is "
+    std::cout << "[viralign-core] SarsCov2 contig index is "
               << sars_cov2_contig_idx << "\n";
   }
 
@@ -164,7 +167,7 @@ int main(int argc, char** argv) {
   bool done;
   for (int i = 0; i < snapargc; i++) {
     if (!options->parse(snapargv, snapargc, i, &done)) {
-      std::cout << "[align-core] Could not parse snap arg "
+      std::cout << "[viralign-core] Could not parse snap arg "
                 << std::string(snapargv[i]) << " \n";
     }
     if (done) break;
@@ -179,7 +182,7 @@ int main(int argc, char** argv) {
     fetcher.reset(new LocalFetcher(agd_meta_path));
     Status fs = fetcher->Run();
     if (!fs.ok()) {
-      std::cout << "[align-core] Unable to create fetcher: "
+      std::cout << "[viralign-core] Unable to create fetcher: "
                 << fs.error_message() << "\n";
     }
   } else {
@@ -188,7 +191,7 @@ int main(int argc, char** argv) {
       // create redox fetcher and run TODO
     } else {
       std::cout
-          << "[align-core] Need either -i or -r for data input. Exiting ... \n";
+          << "[viralign-core] Need either -i or -r for data input. Exiting ... \n";
       exit(0);
     }
   }
@@ -202,17 +205,17 @@ int main(int argc, char** argv) {
 
     const auto& ceph_conf_json_path = args::get(ceph_json_arg);
     s = CephManager::Run(input_queue, max_records, ceph_conf_json_path,
-                         sars_cov2_contig_idx, genome_index, options.get());
+                         sars_cov2_contig_idx, genome_index, options.get(), threads);
 
   } else {
     // we will IO from file system
 
     s = FileSystemManager::Run(input_queue, max_records, sars_cov2_contig_idx,
-                               genome_index, options.get());
+                               genome_index, options.get(), threads);
   }
 
   if (!s.ok()) {
-    std::cout << "[align-core] Error: " << s.error_message() << "\n";
+    std::cout << "[viralign-core] Error: " << s.error_message() << "\n";
     return 0;
   }
 
@@ -222,7 +225,7 @@ int main(int argc, char** argv) {
   }
   
   if (!s.ok()) {
-    std::cout << "[align-core] Error: " << s.error_message() << "\n";
+    std::cout << "[viralign-core] Error: " << s.error_message() << "\n";
     return 0;
   }
 
