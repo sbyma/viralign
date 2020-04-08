@@ -35,9 +35,12 @@ int main(int argc, char** argv) {
       absl::StrCat("Number of threads to use for all stages [",
                    std::thread::hardware_concurrency(), "]"),
       {'t', "threads"});
+  args::ValueFlag<std::string> redis_arg(
+      parser, "redis queue", "Address of the redis queue to pull work from [localhost:1234]",
+      {'r', "redis_queue"});
   args::ValueFlag<std::string> queue_arg(
-      parser, "redis queue", "Address of the redis queue to pull work from.",
-      {'q', "queue"});
+      parser, "redis queue resource name", "Name of the redis resource to get work from [queue:viralign]",
+      {'q', "queue_name"});
   args::ValueFlag<std::string> ceph_json_arg(parser, "ceph config file json",
                                              "Ceph config json path",
                                              {'c', "ceph_config"});
@@ -46,7 +49,7 @@ int main(int argc, char** argv) {
   args::ValueFlag<std::string> genome_location_arg(
       parser, "genomeloc", "SNAP Genome Index location", {'g', "genome_loc"});
   args::ValueFlag<std::string> agd_metadata_args(
-      parser, "agd args", "For testing, an AGD metadata to align some stuff",
+      parser, "agd args", "For testing, an AGD metadata to align some stuff. Overrides -r.",
       {'i', "input_metadata"});
 
   try {
@@ -139,6 +142,10 @@ int main(int argc, char** argv) {
     }
     if (done) break;
   }
+
+  // determine source for data input (-i or -r)
+  //if (agd_metadata_args) 
+
 
   std::string agd_meta_path = args::get(agd_metadata_args);
 
