@@ -195,6 +195,10 @@ int main(int argc, char** argv) {
         output_cols.base = std::move(buffer_pool.get());
         output_cols.qual = std::move(buffer_pool.get());
         output_cols.meta = std::move(buffer_pool.get());
+        output_cols.base->reset();
+        output_cols.qual->reset();
+        output_cols.meta->reset();
+
         if (!chunk_queue.pop(item)) continue;
 
         if (item.chunk_2.get() && item.chunk_2->IsValid()) {

@@ -11,9 +11,11 @@ using namespace errors;
 
 Status ParallelAligner::Create(size_t threads, GenomeIndex* index,
                                AlignerOptions* options,
-                               InputQueueType* input_queue, int filter_contig_index,
+                               InputQueueType* input_queue,
+                               int filter_contig_index,
                                std::unique_ptr<ParallelAligner>& aligner) {
-  aligner.reset(new ParallelAligner(index, options, input_queue, filter_contig_index));
+  aligner.reset(
+      new ParallelAligner(index, options, input_queue, filter_contig_index));
   ERR_RETURN_IF_ERROR(aligner->Init(threads));
   return Status::OK();
 }
@@ -55,9 +57,9 @@ Status ParallelAligner::Init(size_t threads) {
                        "thread ending ...\n";
           return;
         }
-        std::cout << "[ParallelAligner] Aligning read: \n"
-                  << std::string(base, base_len) << "\n"
-                  << std::string(qual, qual_len) << "\n\n";
+        // std::cout << "[ParallelAligner] Aligning read: \n"
+        //<< std::string(base, base_len) << "\n"
+        //<< std::string(qual, qual_len) << "\n\n";
 
         Read read;
         read.init("", 0, base, qual, base_len);
@@ -66,11 +68,17 @@ Status ParallelAligner::Init(size_t threads) {
 
         s = aligner.AlignRead(read, aln, loc);
 
-        std::cout << "[ParallelAligner] aligned to location: " << aln.DebugString() << "\n";
-        if (filter_contig_index_>= 0 && aln.position().ref_index() != filter_contig_index_) {
+        // std::cout << "[ParallelAligner] aligned to location: " <<
+        // aln.DebugString() << "\n";
+        if (filter_contig_index_ >= 0 &&
+            aln.position().ref_index() != filter_contig_index_) {
           builder.AppendEmpty();
         } else {
           builder.AppendAlignmentResult(aln);
+        }
+
+        if (aln.position().ref_index() != -1) {
+          num_mapped_++;
         }
 
         num_aligned_++;
@@ -104,5 +112,7 @@ void ParallelAligner::Stop() {
     t.join();
   }
 
-  std::cout << "[ParallelAligner] aligned " << num_aligned_.load() << " reads.\n";
+  std::cout << "[ParallelAligner] aligned " << num_aligned_.load() << " reads, "
+            << num_mapped_.load() << " successfully mapped ("
+            << (float(num_mapped_.load()) / float(num_aligned_.load()))*100.0f << "%)\n";
 }

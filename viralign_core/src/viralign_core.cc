@@ -175,6 +175,8 @@ int main(int argc, char** argv) {
 
   std::unique_ptr<InputFetcher> fetcher;
 
+  auto t1 = std::chrono::high_resolution_clock::now();
+
   // determine source for data input (-i or -r)
   if (agd_metadata_args) {
     // create local fetcher and run
@@ -228,6 +230,11 @@ int main(int argc, char** argv) {
     std::cout << "[viralign-core] Error: " << s.error_message() << "\n";
     return 0;
   }
+  
+  auto t2 = std::chrono::high_resolution_clock::now();
+  auto total = std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count();
+
+  std::cout << "[viralign-core] Alignment time: " << total << " seconds.\n";
 
   return 0;
 }
