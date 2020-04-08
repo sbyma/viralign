@@ -20,7 +20,7 @@ class RedoxFetcher : public InputFetcher {
   void Stop() override;
 
   // we never know how many records to expect from Redis
-  uint32_t MaxRecords() const override { return -1; }
+  uint32_t MaxRecords() const override { return 0; }
 
  private:
   
