@@ -7,7 +7,7 @@
 
 class FileSystemManager {
  public:
-  static errors::Status Run(absl::string_view agd_meta_path,
+  static errors::Status Run(agd::ReadQueueType* input_queue, int max_records,
                             int filter_contig_index, GenomeIndex* index,
                             AlignerOptions* options);
 };

@@ -86,12 +86,12 @@ Status AGDFileSystemWriter::Initialize(size_t threads) {
       if (!inter_queue_->pop(item)) continue;
 
       size_t buf_idx = 0;
-      auto name = item.name.substr(item.name.find_last_of("/") + 1,
-                                   item.name.find_last_of("_"));
+      auto pos = item.name.find_last_of("/") + 1;
+      auto pos2 = item.name.find_last_of("_");
+      auto name = item.name.substr(pos, pos2 - pos);
 
       std::cout << "[AGDFSWriter] dataset name is " << name << "\n";
       for (auto& col : columns_) {
-
         auto& buf = item.col_bufs[buf_idx];
 
         agd::format::FileHeader header;
@@ -149,7 +149,7 @@ void AGDFileSystemWriter::Stop() {
   for (auto& t : compress_threads_) {
     t.join();
   }
-  
+
   while (!inter_queue_->empty()) std::this_thread::sleep_for(1ms);
   inter_queue_->unblock();
 

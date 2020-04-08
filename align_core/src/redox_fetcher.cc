@@ -16,10 +16,12 @@ Status RedoxFetcher::Create(const std::string& addr, int port,
     return errors::Internal("Failed to connect to redis\n");
   }
 
-  return fetcher->Init();
+  return Status::OK();
 }
 
-Status RedoxFetcher::Init() {
+Status RedoxFetcher::Run() {
+  input_queue_ = std::make_unique<agd::ReadQueueType>(5);
+
   auto loop_func = [this]() {
     json j;
     std::string test;
@@ -30,13 +32,13 @@ Status RedoxFetcher::Init() {
           rdx_.commandSync<std::string>({"BLPOP", queue_name_});
 
       if (cmd.status() == redox::Command<std::string>::NIL_REPLY) {
-        std::cout << "[RedoxFetch] received NIL reply, exiting ...\n";
+        std::cout << "[RedoxFetcher] received NIL reply, exiting ...\n";
         done_ = false;
       } else if (cmd.ok()) {
         // parse string to json
         j = json::parse(cmd.reply());
         item.objName = j["obj_name"];
-        item.pool = j["pool"]; // will be empty if data is in FS
+        item.pool = j["pool"];  // will be empty if data is in FS
         input_queue_->push(std::move(item));
       }
 
@@ -47,4 +49,9 @@ Status RedoxFetcher::Init() {
   loop_thread_ = std::thread(loop_func);
 
   return Status::OK();
+}
+
+void RedoxFetcher::Stop() {
+  done_ = false;
+  loop_thread_.join();
 }

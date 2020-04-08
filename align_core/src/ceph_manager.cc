@@ -16,29 +16,15 @@ using json = nlohmann::json;
 using namespace std::chrono_literals;
 using namespace errors;
 
-Status CephManager::Run(absl::string_view agd_meta_path,
+Status CephManager::Run(agd::ReadQueueType* input_queue, uint32_t max_records,
                         absl::string_view ceph_config_json_path,
                         int filter_contig_index, GenomeIndex* index,
                         AlignerOptions* options) {
-  std::ifstream i(agd_meta_path.data());
-  json agd_metadata;
-  i >> agd_metadata;
-  i.close();
-
+  
   std::ifstream ci(ceph_config_json_path.data());
   json ceph_config_json;
   ci >> ceph_config_json;
   ci.close();
-
-  const auto& records = agd_metadata["records"];
-
-  auto file_path_base =
-      agd_meta_path.substr(0, agd_meta_path.find_last_of('/') + 1);
-
-  std::cout << "base path is " << file_path_base << "\n";
-
-  std::unique_ptr<agd::AGDCephReader::InputQueueType> input_queue =
-      std::make_unique<agd::AGDCephReader::InputQueueType>(5);
 
   std::vector<std::string> columns = {"base", "qual"};
 
@@ -51,14 +37,12 @@ Status CephManager::Run(absl::string_view agd_meta_path,
   std::unique_ptr<agd::AGDCephReader> reader;
   ERR_RETURN_IF_ERROR(agd::AGDCephReader::Create(
       columns, cluster_name, username, name_space, ceph_conf_file,
-      input_queue.get(), 4, buf_pool, reader));
+      input_queue, 4, buf_pool, reader));
 
-  // std::cout << "[align-core] getting output queue \n";
   auto chunk_queue = reader->GetOutputQueue();
 
   std::unique_ptr<ParallelAligner> aligner;
 
-  // TODO filter contig index corresponding to SarsCov2
   ERR_RETURN_IF_ERROR(ParallelAligner::Create(/*threads*/ 1, index, options,
                                               chunk_queue, filter_contig_index, aligner));
 
@@ -69,36 +53,21 @@ Status CephManager::Run(absl::string_view agd_meta_path,
   ERR_RETURN_IF_ERROR(agd::AGDFileSystemWriter::Create({"aln"}, aln_queue, 10,
                                                        buf_pool, writer));
 
-  // dump files for one dataset
-  // eventually, we move to continuous reading from redis queue
-  for (const auto& rec : records) {
-    agd::ReadQueueItem item;
-
-    item.objName = absl::StrCat(file_path_base, rec["path"].get<std::string>());
-
-    item.pool = "lauzhack";  // TODO will be replaced when redis reading works,
-                             // or taken from the agd_metadata file
-    std::cout << "chunk path is: " << item.objName
-              << ", with pool name: " << item.pool << "\n";
-
-    input_queue->push(std::move(item));
-  }
-
-  while (writer->GetNumWritten() != records.size()) {
-    std::this_thread::sleep_for(500ms);
+  if (max_records > 0) {
+    while (writer->GetNumWritten() != max_records) {
+      std::this_thread::sleep_for(500ms);
+    }
+  } else {
+    // else run forever 
+    // TODO respond to stop signals
+    while (true) {
+      std::this_thread::sleep_for(500ms);
+    }
   }
 
   reader->Stop();
   aligner->Stop();
   writer->Stop();
-
-  // if it's fresh (not aligned), add the column to the AGD metadata json
-  const auto& cols = agd_metadata["columns"];
-  if (std::find(cols.begin(), cols.end(), "aln") == cols.end()) {
-    agd_metadata["columns"].push_back("aln");
-    std::ofstream o(agd_meta_path.data());
-    o << std::setw(4) << agd_metadata;
-  }
 
   return Status::OK();
 }

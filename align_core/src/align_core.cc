@@ -1,6 +1,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <thread>
 
@@ -10,7 +11,9 @@
 #include "ceph_manager.h"
 #include "filesystem_manager.h"
 #include "json.hpp"
+#include "local_fetcher.h"
 #include "parallel_aligner.h"
+#include "redox_fetcher.h"
 
 using json = nlohmann::json;
 using namespace errors;
@@ -24,6 +27,26 @@ void CheckStatus(Status& s) {
 
 constexpr absl::string_view SarsCov2Contig = "MN985325";
 
+// if not present, add the "aln" column to an existing AGD metadata json
+Status AddColumn(const std::string& agd_meta_path) {
+
+  std::ifstream i(agd_meta_path.data());
+  if (!i.good()) return errors::Internal("Couldn't open file ", agd_meta_path);
+  json agd_metadata;
+  i >> agd_metadata;
+  i.close();
+
+  const auto& cols = agd_metadata["columns"];
+  if (std::find(cols.begin(), cols.end(), "aln") == cols.end()) {
+    agd_metadata["columns"].push_back("aln");
+    std::ofstream o(agd_meta_path);
+    if (!o.good()) return errors::Internal("Couldn't open file ", agd_meta_path);
+    o << std::setw(4) << agd_metadata;
+  }
+
+  return Status::OK();
+}
+
 int main(int argc, char** argv) {
   args::ArgumentParser parser(
       "align-core",
@@ -36,20 +59,24 @@ int main(int argc, char** argv) {
                    std::thread::hardware_concurrency(), "]"),
       {'t', "threads"});
   args::ValueFlag<std::string> redis_arg(
-      parser, "redis queue", "Address of the redis queue to pull work from [localhost:1234]",
+      parser, "redis queue",
+      "Address of the redis queue to pull work from [localhost:1234]",
       {'r', "redis_queue"});
   args::ValueFlag<std::string> queue_arg(
-      parser, "redis queue resource name", "Name of the redis resource to get work from [queue:viralign]",
+      parser, "redis queue resource name",
+      "Name of the redis resource to get work from [queue:viralign]",
       {'q', "queue_name"});
-  args::ValueFlag<std::string> ceph_json_arg(parser, "ceph config file json",
-                                             "Ceph config json path",
-                                             {'c', "ceph_config"});
+  args::ValueFlag<std::string> ceph_json_arg(
+      parser, "ceph config file json",
+      "Ceph config json path. If not provided, filesystem access is assumed.",
+      {'c', "ceph_config"});
   args::ValueFlag<std::string> snap_args_arg(
       parser, "snap args", "Any args to pass to SNAP", {'s', "snap_args"});
   args::ValueFlag<std::string> genome_location_arg(
       parser, "genomeloc", "SNAP Genome Index location", {'g', "genome_loc"});
   args::ValueFlag<std::string> agd_metadata_args(
-      parser, "agd args", "For testing, an AGD metadata to align some stuff. Overrides -r.",
+      parser, "agd args",
+      "For testing, an AGD metadata to align some stuff. Overrides -r.",
       {'i', "input_metadata"});
 
   try {
@@ -143,28 +170,60 @@ int main(int argc, char** argv) {
     if (done) break;
   }
 
+  std::unique_ptr<InputFetcher> fetcher;
+
   // determine source for data input (-i or -r)
-  //if (agd_metadata_args) 
+  if (agd_metadata_args) {
+    // create local fetcher and run
+    std::string agd_meta_path = args::get(agd_metadata_args);
+    fetcher.reset(new LocalFetcher(agd_meta_path));
+    Status fs = fetcher->Run();
+    if (!fs.ok()) {
+      std::cout << "[align-core] Unable to create fetcher: "
+                << fs.error_message() << "\n";
+    }
+  } else {
+    // this is the "run forever" case
+    if (redis_arg) {
+      // create redox fetcher and run TODO
+    } else {
+      std::cout
+          << "[align-core] Need either -i or -r for data input. Exiting ... \n";
+      exit(0);
+    }
+  }
 
-
-  std::string agd_meta_path = args::get(agd_metadata_args);
+  auto input_queue = fetcher->GetInputQueue();
+  int max_records = fetcher->MaxRecords();  // run forever
 
   Status s = Status::OK();
   if (ceph_json_arg) {
     // we will do IO from ceph
 
     const auto& ceph_conf_json_path = args::get(ceph_json_arg);
-    s = CephManager::Run(agd_meta_path, ceph_conf_json_path, sars_cov2_contig_idx, genome_index,
-                         options.get());
+    s = CephManager::Run(input_queue, max_records, ceph_conf_json_path,
+                         sars_cov2_contig_idx, genome_index, options.get());
 
   } else {
     // we will IO from file system
 
-    s = FileSystemManager::Run(agd_meta_path, sars_cov2_contig_idx, genome_index, options.get());
+    s = FileSystemManager::Run(input_queue, max_records, sars_cov2_contig_idx,
+                               genome_index, options.get());
   }
 
   if (!s.ok()) {
     std::cout << "[align-core] Error: " << s.error_message() << "\n";
+    return 0;
+  }
+
+  if (agd_metadata_args) {
+    std::string agd_meta_path = args::get(agd_metadata_args);
+    s = AddColumn(agd_meta_path);
+  }
+  
+  if (!s.ok()) {
+    std::cout << "[align-core] Error: " << s.error_message() << "\n";
+    return 0;
   }
 
   return 0;

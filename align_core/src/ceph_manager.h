@@ -6,7 +6,7 @@
 
 class CephManager {
  public:
-  static errors::Status Run(absl::string_view agd_meta_json_path,
+  static errors::Status Run(agd::ReadQueueType* input_queue, uint32_t max_records,
                             absl::string_view ceph_config_json_path,
                             int filter_contig_index, GenomeIndex* index,
                             AlignerOptions* options);
