@@ -1,4 +1,6 @@
 #include "agd_ceph_reader.h"
+
+#include "absl/strings/str_format.h"
 #include "parser.h"
 
 using namespace std::chrono_literals;
@@ -27,21 +29,21 @@ Status AGDCephReader::setup_ceph_connection(const std::string& cluster_name,
   if (ret < 0) {
     return Internal("[AGDCephReader] Couldn't intialize the cluster handle! error ", ret);
   } else {
-    std::cout << "[AGDCephReader] Created a cluster handle." << std::endl;
+    std::cout << absl::StreamFormat("[AGDCephReader] Created a cluster handle.\n");
   }
 
   ret = cluster_.conf_read_file(ceph_conf_file.c_str());
   if (ret < 0) {
     return Internal("[AGDCephReader] Couldn't read the Ceph configuration file! error ", ret);
   } else {
-    std::cout << "[AGDCephReader] Read the Ceph configuration file." << std::endl;
+    std::cout << absl::StreamFormat("[AGDCephReader] Read the Ceph configuration file.\n");
   }
 
   ret = cluster_.connect();
   if (ret < 0) {
     return Unavailable("[AGDCephReader] Couldn't connect to cluster! error ", ret);
   } else {
-    std::cout << "[AGDCephReader] Connected to the cluster." << std::endl;
+    std::cout << absl::StreamFormat("[AGDCephReader] Connected to the cluster.\n");
   }
 
   return Status::OK();
@@ -52,11 +54,11 @@ void AGDCephReader::create_io_ctx(const InputQueueItem& item,
                                   librados::IoCtx* io_ctx) {
   int ret = cluster_.ioctx_create(item.pool.c_str(), *io_ctx);
   if (ret < 0) {
-    std::cerr << "[AGDCephReader] Couldn't set up ioctx! error " << ret << ". Thread exiting."<< std::endl;
+    std::cerr << absl::StreamFormat("[AGDCephReader] Couldn't set up ioctx! error %d. Thread exiting.\n", ret);
     exit(EXIT_FAILURE);
   } else {
     io_ctx->set_namespace(name_space);
-    std::cout << "[AGDCephReader] Created ioctx for namespace " << name_space << "." << std::endl;
+    std::cout << absl::StreamFormat("[AGDCephReader] Created ioctx for namespace %s.\n", name_space);
   }
 }
 
@@ -66,11 +68,11 @@ ceph::bufferlist AGDCephReader::read_file(const std::string& objId, librados::Io
   time_t pmtime;
   ret = io_ctx.stat(objId, &file_size, &pmtime);
   if (ret != 0) {
-    std::cerr << "[AGDCephReader] io_ctx.stat() return " << ret << " for key " << objId << std::endl;
+    std::cerr << absl::StreamFormat("[AGDCephReader] io_ctx.stat() return %d for key %s\n", ret, objId);
     exit(EXIT_FAILURE);
   }
 
-  std::cout << "[AGDCephReader] filesize = " << file_size << "." << std::endl;
+  std::cout << absl::StreamFormat("[AGDCephReader] filesize = %d.\n", file_size);
 
   size_t data_read = 0;
   size_t read_len;
@@ -80,13 +82,13 @@ ceph::bufferlist AGDCephReader::read_file(const std::string& objId, librados::Io
   while (data_read < file_size) {
     read_len = std::min(size_to_read, file_size - data_read);
 
-    std::cout << "[AGDCephReader] Trying to read " << read_len << " bytes from " << objId << "." << std::endl;
+    std::cout << absl::StreamFormat("[AGDCephReader] Trying to read %d bytes from %s.\n", read_len, objId);
 
     // Create I/O Completion.
     librados::AioCompletion *read_completion = librados::Rados::aio_create_completion();
     ret = io_ctx.aio_read(objId, read_completion, &read_buf, read_len, data_read);
     if (ret < 0) {
-      std::cerr << "[AGDCephReader] Couldn't start read object! error " << ret << std::endl;
+      std::cerr << absl::StreamFormat("[AGDCephReader] Couldn't start read object! error %d\n", ret);
       exit(EXIT_FAILURE);
     }
 
@@ -96,7 +98,7 @@ ceph::bufferlist AGDCephReader::read_file(const std::string& objId, librados::Io
     read_completion->wait_for_complete();
     ret = read_completion->get_return_value();
     if (ret < 0) {
-      std::cerr << "[AGDCephReader] Couldn't read object! error " << ret << std::endl;
+      std::cerr << absl::StreamFormat("[AGDCephReader] Couldn't read object! error %d\n", ret);
       exit(EXIT_FAILURE);
     }
   }
@@ -119,9 +121,9 @@ Status AGDCephReader::Initialize(const std::string& cluster_name,
 
     while (!done_) {
       InputQueueItem item;
-      std::cout << "[AGDCephReader] Trying to pop queue" << std::endl;
+      std::cout << absl::StreamFormat("[AGDCephReader] Trying to pop queue\n");
       if (!input_queue_->pop(item)) continue;
-      std::cout << "[AGDCephReader] input_queue = {" << item.objName << ", " << item.pool << "}" << std::endl;
+      std::cout << absl::StreamFormat("[AGDCephReader] input_queue = {%s, %s}\n", item.objName, item.pool);
 
       librados::IoCtx io_ctx;
       create_io_ctx(item, name_space, &io_ctx);
@@ -138,10 +140,10 @@ Status AGDCephReader::Initialize(const std::string& cluster_name,
         uint32_t num_records;
 
         Status s = parser.ParseNew(read_buf.c_str(), read_buf.length(), false, out_buf.get(), &first_ordinal, &num_records, record_id);
-        std::cout << "[AGDCephReader] Parsed chunk with " << num_records << " records." << std::endl;
+        std::cout << absl::StrFormat("[AGDCephReader] Parsed chunk with %d records.\n");
 
         if (!s.ok()) {
-          std::cerr << "[AGDCephReader] WARNING: Error decompressing chunk: " << s.error_message() << std::endl;
+          std::cerr << absl::StrFormat("[AGDCephReader] WARNING: Error decompressing chunk: %s\n", s.error_message());
           return;
         }
 
@@ -169,7 +171,7 @@ AGDCephReader::OutputQueueType* AGDCephReader::GetOutputQueue() {
 
 void AGDCephReader::Stop() {
   // this doesnt own input_queue_, should it really be stopping it?
-  std::cout << "[AGDCephReader] Stopping ...\n";
+  std::cout << absl::StreamFormat("[AGDCephReader] Stopping ...\n");
   while (!input_queue_->empty()) std::this_thread::sleep_for(1ms);
   // may already be unblocked by the owner, but its fine
   input_queue_->unblock();

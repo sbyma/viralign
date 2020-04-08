@@ -1,4 +1,6 @@
 #include "agd_ceph_writer.h"
+
+#include "absl/strings/str_format.h"
 #include "compression.h"
 
 using namespace std::chrono_literals;
@@ -27,21 +29,21 @@ Status AGDCephWriter::setup_ceph_connection(const std::string& cluster_name,
   if (ret < 0) {
     return Internal("[AGDCephWriter] Couldn't intialize the cluster handle! error ", ret);
   } else {
-    std::cout << "[AGDCephWriter] Created a cluster handle." << std::endl;
+    std::cout << absl::StreamFormat("[AGDCephWriter] Created a cluster handle.\n");
   }
 
   ret = cluster_.conf_read_file(ceph_conf_file.c_str());
   if (ret < 0) {
     return Internal("[AGDCephWriter] Couldn't read the Ceph configuration file! error ", ret);
   } else {
-    std::cout << "[AGDCephWriter] Read the Ceph configuration file." << std::endl;
+    std::cout << absl::StreamFormat("[AGDCephWriter] Read the Ceph configuration file.\n");
   }
 
   ret = cluster_.connect();
   if (ret < 0) {
     return Unavailable("[AGDCephWriter] Couldn't connect to cluster! error ", ret);
   } else {
-    std::cout << "[AGDCephWriter] Connected to the cluster." << std::endl;
+    std::cout << absl::StreamFormat("[AGDCephWriter] Connected to the cluster.\n");
   }
 
   return Status::OK();
@@ -52,11 +54,11 @@ void AGDCephWriter::create_io_ctx(const InputQueueItem& item,
                                   librados::IoCtx* io_ctx) {
   int ret = cluster_.ioctx_create(item.pool.c_str(), *io_ctx);
   if (ret < 0) {
-    std::cerr << "[AGDCephWriter] Couldn't set up ioctx! error " << ret << ". Thread exiting."<< std::endl;
+    std::cerr << absl::StreamFormat("[AGDCephWriter] Couldn't set up ioctx! error %d. Thread exiting.\n", ret);
     exit(EXIT_FAILURE);
   } else {
     io_ctx->set_namespace(name_space);
-    std::cout << "[AGDCephWriter] Created ioctx for namespace " << name_space << "." << std::endl;
+    std::cout << absl::StreamFormat("[AGDCephWriter] Created ioctx for namespace %s.\n", name_space);
   }
 }
 
@@ -66,11 +68,11 @@ ceph::bufferlist AGDCephWriter::write_file(const std::string& objId, librados::I
   time_t pmtime;
   ret = io_ctx.stat(objId, &file_size, &pmtime);
   if (ret != 0) {
-    std::cerr << "[AGDCephWriter] io_ctx.stat() return " << ret << " for key " << objId << std::endl;
+    std::cerr << absl::StreamFormat("[AGDCephWriter] io_ctx.stat() return %d for key %s\n", ret, objId);
     exit(EXIT_FAILURE);
   }
 
-  std::cout << "[AGDCephWriter] filesize = " << file_size << "." << std::endl;
+  std::cout << absl::StreamFormat("[AGDCephWriter] filesize = %d.\n", file_size);
 
   size_t data_read = 0;
   size_t read_len;
@@ -80,13 +82,13 @@ ceph::bufferlist AGDCephWriter::write_file(const std::string& objId, librados::I
   while (data_read < file_size) {
     read_len = std::min(size_to_read, file_size - data_read);
 
-    std::cout << "[AGDCephWriter] Trying to read " << read_len << " bytes from " << objId << "." << std::endl;
+    std::cout << absl::StreamFormat("[AGDCephWriter] Trying to read %d bytes from %s.\n", read_len, objId);
 
     // Create I/O Completion.
     librados::AioCompletion *read_completion = librados::Rados::aio_create_completion();
     ret = io_ctx.aio_read(objId, read_completion, &read_buf, read_len, data_read);
     if (ret < 0) {
-      std::cerr << "[AGDCephWriter] Couldn't start read object! error " << ret << std::endl;
+      std::cerr << absl::StreamFormat("[AGDCephWriter] Couldn't start read object! error %d\n", ret);
       exit(EXIT_FAILURE);
     }
 
@@ -96,7 +98,7 @@ ceph::bufferlist AGDCephWriter::write_file(const std::string& objId, librados::I
     read_completion->wait_for_complete();
     ret = read_completion->get_return_value();
     if (ret < 0) {
-      std::cerr << "[AGDCephWriter] Couldn't read object! error " << ret << std::endl;
+      std::cerr << absl::StreamFormat("[AGDCephWriter] Couldn't read object! error %d\n", ret);
       exit(EXIT_FAILURE);
     }
   }
@@ -124,18 +126,15 @@ Status AGDCephWriter::Initialize(const std::string& cluster_name,
   auto compress_and_write_func = [this, name_space]() {
     while (!done_) {
       InputQueueItem item;
-      std::cout << "[AGDCephWriter] Trying to pop queue" << std::endl;
+      std::cout << absl::StreamFormat("[AGDCephWriter] Trying to pop queue\n");
       if (!input_queue_->pop(item)) continue;
-      std::cout << "[AGDCephWriter] input_queue = {"
-                << item.pool << ", "
-                << item.chunk_size << ", "
-                << item.first_ordinal << ", "
-                << item.name << "}"
-                << std::endl;
+      std::cout << absl::StreamFormat("[AGDCephWriter] input_queue = {%s, %d, %d, %s}\n",
+                                      item.pool, item.chunk_size,
+                                      item.first_ordinal, item.name);
 
       if (item.col_buf_pairs.size() != columns_.size()) {
-        std::cerr << "[AGDCephWriter] expected " << columns_.size()
-                  << " columns, got " << item.col_buf_pairs.size() << std::endl;
+        std::cerr << absl::StreamFormat("[AGDCephWriter] expected %d columns, got %d\n",
+                                        columns_.size(), item.col_buf_pairs.size());
         return;
       }
 
@@ -156,20 +155,20 @@ Status AGDCephWriter::Initialize(const std::string& cluster_name,
         Status s = Status::OK();
         s = compressor.init();
         if (!s.ok()) {
-          std::cerr << "[AGDCephWriter] Error: couldn't init compressor: "
-                    << s.error_message() << std::endl;
+          std::cerr << absl::StreamFormat("[AGDCephWriter] Error: couldn't init compressor: %s\n",
+                                          s.error_message());
           exit(EXIT_FAILURE);
         }
         s = compressor.appendGZIP(colbufpair->index().data(), colbufpair->index().size());
         if (!s.ok()) {
-          std::cerr << "[AGDCephWriter] Error: couldn't compress data: "
-                    << s.error_message() << std::endl;
+          std::cerr << absl::StreamFormat("[AGDCephWriter] Error: couldn't compress data: %s\n",
+                                          s.error_message());
           exit(EXIT_FAILURE);
         }
         s = compressor.appendGZIP(colbufpair->data().data(), colbufpair->data().size());
         if (!s.ok()) {
-          std::cerr << "[AGDCephWriter] Error: couldn't compress data: "
-                    << s.error_message() << std::endl;
+          std::cerr << absl::StreamFormat("[AGDCephWriter] Error: couldn't compress data: %s\n",
+                                          s.error_message());
           exit(EXIT_FAILURE);
         }
 
@@ -196,32 +195,6 @@ Status AGDCephWriter::Initialize(const std::string& cluster_name,
 
         num_written_++;
       }
-
-
-      // OutputQueueItem out_item;
-      // out_item.name = std::move(item.objName);
-
-      // for (const auto& col : columns_) {
-      //   std::string objId = out_item.name + "." + col;
-      //   auto read_buf = read_file(objId, io_ctx);
-      //   auto out_buf = buf_pool_->get();
-      //   uint64_t first_ordinal;
-      //   uint32_t num_records;
-
-      //   Status s = parser.ParseNew(read_buf.c_str(), read_buf.length(), false, out_buf.get(), &first_ordinal, &num_records, record_id);
-      //   std::cout << "[AGDCephWriter] Parsed chunk with " << num_records << " records." << std::endl;
-
-      //   if (!s.ok()) {
-      //     std::cerr << "[AGDCephWriter] WARNING: Error decompressing chunk: " << s.error_message() << std::endl;
-      //     return;
-      //   }
-
-      //   out_item.col_bufs.push_back(std::move(out_buf));
-      //   out_item.chunk_size = num_records;
-      //   out_item.first_ordinal = first_ordinal;
-      // }
-
-      // output_queue_->push(std::move(out_item));
     }
   };
 
@@ -236,7 +209,7 @@ Status AGDCephWriter::Initialize(const std::string& cluster_name,
 
 void AGDCephWriter::Stop() {
   // this doesnt own input_queue_, should it really be stopping it?
-  std::cout << "[AGDCephWriter] Stopping ...\n";
+  std::cout << absl::StreamFormat("[AGDCephWriter] Stopping ...\n");
   while (!input_queue_->empty()) std::this_thread::sleep_for(1ms);
   // may already be unblocked by the owner, but its fine
   input_queue_->unblock();
