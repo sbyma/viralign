@@ -73,6 +73,7 @@ Status ParallelAligner::Init(size_t threads) {
           builder.AppendAlignmentResult(aln);
         }
 
+        num_aligned_++;
         s = base_reader.GetNextRecord(&base, &base_len);
       }
 
@@ -101,4 +102,6 @@ void ParallelAligner::Stop() {
   for (auto& t : aligner_threads_) {
     t.join();
   }
+
+  std::cout << "[ParallelAligner] aligned " << num_aligned_.load() << " reads.\n";
 }

@@ -39,6 +39,8 @@ class ParallelAligner {
   std::unique_ptr<OutputQueueType> output_queue_;
   volatile bool done_ = false;
 
+  std::atomic_uint64_t num_aligned_{0};
+  
   // if not -1, output 0 entry for any alignment not mapping to this contig
   int filter_contig_index_ = -1;
 };

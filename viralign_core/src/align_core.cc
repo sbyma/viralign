@@ -223,7 +223,7 @@ int main(int argc, char** argv) {
     std::string agd_meta_path = args::get(agd_metadata_args);
     s = AddColumn(agd_meta_path);
   }
-  
+
   if (!s.ok()) {
     std::cout << "[viralign-core] Error: " << s.error_message() << "\n";
     return 0;

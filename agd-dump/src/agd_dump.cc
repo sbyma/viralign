@@ -31,7 +31,9 @@ void DumpValue(absl::string_view column, const char* data, size_t data_len) {
     cout << string(data, data_len) << "\n";
   } else if (column == "aln") {
     Alignment aln;
-    aln.ParseFromArray(data, data_len);
+    bool parsed = aln.ParseFromArray(data, data_len);
+    if (!parsed) cout << "failed to parse alignment\n";
+    cout << "alignment: ";
     cout << aln.ShortDebugString() << "\n";
   }
 }
