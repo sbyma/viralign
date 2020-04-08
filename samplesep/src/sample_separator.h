@@ -25,7 +25,7 @@ class SampleSeparator {
  private:
   // build each sample one buffer at a time
   // the pair lets us build the data block and relative index at the same time
-  // when at chunk_size_, we can push the SmapleChunk to its associated
+  // when at chunk_size_, we can push the SampleChunk to its associated
   // DatasetWriter for output
   struct SampleChunk {
     agd::ObjectPool<agd::BufferPair>::ptr_type base_buf;
@@ -38,7 +38,11 @@ class SampleSeparator {
     size_t current_size;
   };
 
+  // map from sample barcode to current chunk
+  // depending on the number of samples and chunk size,
+  // this could eat a lot of memory
   absl::flat_hash_map<absl::string_view, SampleChunk> sample_map_;
+
   absl::flat_hash_map<absl::string_view, std::unique_ptr<agd::DatasetWriter>>
       writer_map_;
 

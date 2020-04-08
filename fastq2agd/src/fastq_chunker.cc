@@ -1,5 +1,8 @@
 #include "fastq_chunker.h"
 
+#include <fstream>
+#include <iostream>
+
 using namespace std;
 
 // note: copies the shared ptr and any custom deleter (which we'll use)
@@ -58,10 +61,13 @@ bool FastqChunker::advance_line() {
 }
 
 Status CompressedFastqChunker::Init(const std::string input_fastq) {
-  in_strm_.reset(new zstr::ifstream(input_fastq));
-  if (!in_strm_->good()) {
-    return errors::Internal("unable to open compressed file ", input_fastq);
-  }
+  istrm_in_.reset(new std::ifstream(input_fastq, std::ios::binary));
+  input_strm_.reset(
+      new google::protobuf::io::IstreamInputStream(istrm_in_.get()));
+  gzip_in_.reset(new google::protobuf::io::GzipInputStream(
+      input_strm_.get(), google::protobuf::io::GzipInputStream::AUTO,
+      50 * 1024 * 1024));
+
   leftover_buf_ = buf_pool_->get();
   leftover_buf_->reset();
   leftover_buf_->reserve(1024 * 1024 * 50);  // 1 MB ?
@@ -160,22 +166,42 @@ bool CompressedFastqChunker::next_chunk(BufferedFastqChunk& chunk) {
   // this was as annoying to write as it looks
 
   cout << "getting next chunk!\n";
+  auto out_buf = buf_pool_->get();
 
-  // count the number of entries in the buf
-  // if not chunk_size, read more
   size_t recs = 0;
-  uint64_t position = count_recs(
-      leftover_buf_->data(), leftover_buf_->data() + leftover_buf_->size(),
-      recs, chunk_size_, iseof_);
+  while (recs < chunk_size_) {
+    const void* buf;
+    int size;
+    bool end = gzip_in_->Next(&buf, &size);
+
+    const char* charbuf = reinterpret_cast<const char*>(buf);
+    uint64_t position = count_recs(charbuf, charbuf + size, recs, chunk_size_, !end);
+
+    // copy charbuf -> position into output buffer
+    // backup stream by size - position
+    out_buf->AppendBuffer(charbuf, position);
+    gzip_in_->BackUp(size - position);
+  }
+
+  chunk = std::move(BufferedFastqChunk(leftover_buf_, recs));
+  cout << "num recs is " << recs << "\n";
+
+
+
+  // count the number of entries in the buf // if not chunk_size, read more
+  /*size_t recs = 0;
+  uint64_t position = count_recs(leftover_buf_->data(),
+                                 leftover_buf_->data() + leftover_buf_->size(),
+                                 recs, chunk_size_, iseof_);
   const char* ptr = leftover_buf_->data() + position;
   if (*ptr != '@') {
     std::cout << "ERROR: position is not on record boundary\n";
   }
   while (recs < chunk_size_) {
     // extend buffer if we need
-    if (leftover_buf_->capacity() - leftover_buf_->size() < 1024*1024*50)
+    if (leftover_buf_->capacity() - leftover_buf_->size() < 1024 * 1024 * 50)
       leftover_buf_->reserve(leftover_buf_->capacity() +
-                             1024*1024*50);  // extend by 50MB
+                             1024 * 1024 * 50);  // extend by 50MB
 
     in_strm_->read(leftover_buf_->mutable_data() + leftover_buf_->size(),
                    leftover_buf_->capacity() - leftover_buf_->size());
@@ -191,12 +217,12 @@ bool CompressedFastqChunker::next_chunk(BufferedFastqChunk& chunk) {
     }
 
     position += count_recs(leftover_buf_->data() + position,
-                              leftover_buf_->data() + leftover_buf_->size(),
-                              recs, chunk_size_, iseof_);
+                           leftover_buf_->data() + leftover_buf_->size(), recs,
+                           chunk_size_, iseof_);
     ptr = leftover_buf_->data() + position;
     if (*ptr != '@' && position != leftover_buf_->size()) {
       std::cout << "ERROR: position is not on record boundary\n";
-      std::cout << std::string(ptr-500, 510);
+      std::cout << std::string(ptr - 500, 510);
     }
   }
 
@@ -208,7 +234,8 @@ bool CompressedFastqChunker::next_chunk(BufferedFastqChunk& chunk) {
   new_leftover->AppendBuffer(leftover_buf_->data() + position,
                              leftover_buf_->size() - position);
   leftover_buf_->resize(position);
-  cout << "chunk last char is " << leftover_buf_->data()[leftover_buf_->size() - 1] << "\n";
+  cout << "chunk last char is "
+       << leftover_buf_->data()[leftover_buf_->size() - 1] << "\n";
   cout << "chunk is " << leftover_buf_->size() << " bytes\n";
 
   // cout << "the chunk is \n" << std::string(leftover_buf_->data(),
@@ -221,7 +248,7 @@ bool CompressedFastqChunker::next_chunk(BufferedFastqChunk& chunk) {
   ptr = leftover_buf_->data();
   if (*ptr != '@' && position != leftover_buf_->size()) {
     std::cout << "ERROR: position is not on record boundary\n";
-  }
+  }*/
 
   return true;
 }

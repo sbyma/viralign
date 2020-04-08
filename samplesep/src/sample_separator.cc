@@ -6,6 +6,7 @@ Status SampleSeparator::Separate() {
   size_t base_len, meta_len, sample_base_len, sample_meta_len;
   Status s = Status::OK();
 
+  uint64_t reads_processed = 0;
   s = fastq_parser_->GetNextRecord(&base, &base_len, &qual, &meta, &meta_len);
 
   while (s.ok()) {
@@ -62,7 +63,8 @@ Status SampleSeparator::Separate() {
 
     } else {
       // it doesnt exist, initialize
-      std::cout << "[samplesep] creating new writer for new sample: " << sample_key << "\n";
+      std::cout << "[samplesep] creating new writer for new sample: "
+                << sample_key << "\n";
       SampleChunk newchunk;
       newchunk.base_buf = std::move(bufpair_pool_.get());
       newchunk.qual_buf = std::move(bufpair_pool_.get());
@@ -88,6 +90,12 @@ Status SampleSeparator::Separate() {
     }
 
     s = fastq_parser_->GetNextRecord(&base, &base_len, &qual, &meta, &meta_len);
+    reads_processed++;
+
+    if (reads_processed % 10000000 == 0) {
+      std::cout << "[samplesep] Processed " << reads_processed
+                << " reads ...\n";
+    }
   }
 
   // write out last chunks that weren't full size
@@ -105,7 +113,9 @@ Status SampleSeparator::Separate() {
     }
   }
 
-  std::cout << "[samplesep] fastq processing complete\n";
+  std::cout << "[samplesep] fastq processing complete, wrote out "
+            << writer_map_.size() << " sample datasets from " << reads_processed
+            << " reads.\n";
   for (auto& v : writer_map_) {
     v.second->Stop();
     v.second->WriteMetadata();

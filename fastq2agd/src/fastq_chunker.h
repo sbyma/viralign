@@ -1,7 +1,10 @@
 #include "fastq_chunk.h"
 #include "libagd/src/buffer.h"
 #include "libagd/src/object_pool.h"
-#include "zstr.hpp"
+#include "libagd/src/proto/alignment.pb.h"
+#include <google/protobuf/io/gzip_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 class FastqChunker {
  public:
@@ -34,7 +37,10 @@ class CompressedFastqChunker {
  private:
   size_t chunk_size_;
   agd::ObjectPool<agd::Buffer>* buf_pool_;
-  std::unique_ptr<std::istream> in_strm_;
   agd::ObjectPool<agd::Buffer>::ptr_type leftover_buf_;
   bool iseof_ = false;
+
+  std::unique_ptr<std::istream> istrm_in_;
+  std::unique_ptr<google::protobuf::io::IstreamInputStream> input_strm_;
+  std::unique_ptr<google::protobuf::io::GzipInputStream> gzip_in_;
 };
