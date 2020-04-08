@@ -79,6 +79,7 @@ Status ParallelAligner::Init(size_t threads) {
       OutputQueueItem out_item;
       out_item.col_buf_pairs.push_back(std::move(out_buf_pair));
       out_item.chunk_size = item.chunk_size;
+      out_item.pool = item.pool;
       out_item.first_ordinal = item.first_ordinal;
       out_item.name = std::move(item.name);
       output_queue_->push(std::move(out_item));
