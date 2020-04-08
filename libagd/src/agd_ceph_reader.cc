@@ -130,6 +130,7 @@ Status AGDCephReader::Initialize(const std::string& cluster_name,
 
       OutputQueueItem out_item;
       out_item.pool = std::move(item.pool);
+      // potentially strip filepath prefix from object name here
       out_item.name = std::move(item.objName);
 
       for (const auto& col : columns_) {
