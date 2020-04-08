@@ -62,50 +62,6 @@ void AGDCephWriter::create_io_ctx(const InputQueueItem& item,
   }
 }
 
-ceph::bufferlist AGDCephWriter::write_file(const std::string& objId, librados::IoCtx& io_ctx) {
-  int ret;
-  size_t file_size;
-  time_t pmtime;
-  ret = io_ctx.stat(objId, &file_size, &pmtime);
-  if (ret != 0) {
-    std::cerr << absl::StreamFormat("[AGDCephWriter] io_ctx.stat() return %d for key %s\n", ret, objId);
-    exit(EXIT_FAILURE);
-  }
-
-  std::cout << absl::StreamFormat("[AGDCephWriter] filesize = %d.\n", file_size);
-
-  size_t data_read = 0;
-  size_t read_len;
-  size_t size_to_read = 4 * 1024 * 1024; // 4 MB. I chose this arbitrarily.
-
-  librados::bufferlist read_buf;
-  while (data_read < file_size) {
-    read_len = std::min(size_to_read, file_size - data_read);
-
-    std::cout << absl::StreamFormat("[AGDCephWriter] Trying to read %d bytes from %s.\n", read_len, objId);
-
-    // Create I/O Completion.
-    librados::AioCompletion *read_completion = librados::Rados::aio_create_completion();
-    ret = io_ctx.aio_read(objId, read_completion, &read_buf, read_len, data_read);
-    if (ret < 0) {
-      std::cerr << absl::StreamFormat("[AGDCephWriter] Couldn't start read object! error %d\n", ret);
-      exit(EXIT_FAILURE);
-    }
-
-    data_read += read_len;
-
-    // Wait for the request to complete, and check that it succeeded.
-    read_completion->wait_for_complete();
-    ret = read_completion->get_return_value();
-    if (ret < 0) {
-      std::cerr << absl::StreamFormat("[AGDCephWriter] Couldn't read object! error %d\n", ret);
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  return read_buf;
-}
-
 Status AGDCephWriter::Initialize(const std::string& cluster_name,
                                  const std::string& user_name,
                                  const std::string& name_space,
@@ -171,6 +127,12 @@ Status AGDCephWriter::Initialize(const std::string& cluster_name,
                                           s.error_message());
           exit(EXIT_FAILURE);
         }
+        s = compressor.finish();
+        if (!s.ok()) {
+          std::cerr << absl::StreamFormat("[AGDCephWriter] Error: couldn't close compressor: %s\n",
+                                          s.error_message());
+          exit(EXIT_FAILURE);
+        }
 
         // Write.
         const auto& colname = columns_[buf_idx];
@@ -191,6 +153,7 @@ Status AGDCephWriter::Initialize(const std::string& cluster_name,
         std::string objId = item.name + "." + colname;
         librados::bufferlist bl = bl.static_from_mem((char*) &header, sizeof(header));
         bl.append(compress_buf->data(), compress_buf->size());
+        std::cout << absl::StreamFormat("Writing %d bytes to object %s in ceph\n", bl.length(), objId);
         io_ctx.write_full(objId, bl);
 
         num_written_++;

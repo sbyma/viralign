@@ -57,8 +57,6 @@ class AGDCephWriter {
   void create_io_ctx(const InputQueueItem& item,
                      const std::string& name_space,
                      librados::IoCtx* io_ctx);
-  ceph::bufferlist write_file(const std::string& objId,
-                              librados::IoCtx& io_ctx);
 
   struct FormatValue {
     format::RecordType type;

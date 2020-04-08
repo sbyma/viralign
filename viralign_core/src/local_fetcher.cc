@@ -8,7 +8,7 @@
 using json = nlohmann::json;
 
 errors::Status LocalFetcher::Run() {
-    
+
   input_queue_ = std::make_unique<agd::ReadQueueType>(5);
   std::ifstream i(agd_meta_path_.data());
   i >> agd_metadata_;
@@ -45,7 +45,7 @@ errors::Status LocalFetcher::Run() {
         item.objName =
             absl::StrCat(file_path_base, rec["path"].get<std::string>());
       }
-      item.pool = std::move(pool);
+      item.pool = pool;
       std::cout << "[LocalFetcher] chunk path / obj name is: " << item.objName
                 << ", pool name is: " << item.pool << "\n";
 
