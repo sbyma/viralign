@@ -12,12 +12,12 @@ Status AGDCephWriter::Create(std::vector<std::string> columns,
                              const std::string& user_name,
                              const std::string& name_space,
                              const std::string& ceph_conf_file,
-                             InputQueueType* input_queue,
-                             size_t threads,
+                             InputQueueType* input_queue, size_t threads,
                              ObjectPool<Buffer>& buf_pool,
                              std::unique_ptr<AGDCephWriter>& writer) {
   writer.reset(new AGDCephWriter(columns, buf_pool, input_queue));
-  return writer->Initialize(cluster_name, user_name, name_space, ceph_conf_file, threads);
+  return writer->Initialize(cluster_name, user_name, name_space, ceph_conf_file,
+                            threads);
 }
 
 Status AGDCephWriter::setup_ceph_connection(const std::string& cluster_name,
@@ -27,23 +27,30 @@ Status AGDCephWriter::setup_ceph_connection(const std::string& cluster_name,
 
   ret = cluster_.init2(user_name.c_str(), cluster_name.c_str(), 0);
   if (ret < 0) {
-    return Internal("[AGDCephWriter] Couldn't intialize the cluster handle! error ", ret);
+    return Internal(
+        "[AGDCephWriter] Couldn't intialize the cluster handle! error ", ret);
   } else {
-    std::cout << absl::StreamFormat("[AGDCephWriter] Created a cluster handle.\n");
+    std::cout << absl::StreamFormat(
+        "[AGDCephWriter] Created a cluster handle.\n");
   }
 
   ret = cluster_.conf_read_file(ceph_conf_file.c_str());
   if (ret < 0) {
-    return Internal("[AGDCephWriter] Couldn't read the Ceph configuration file! error ", ret);
+    return Internal(
+        "[AGDCephWriter] Couldn't read the Ceph configuration file! error ",
+        ret);
   } else {
-    std::cout << absl::StreamFormat("[AGDCephWriter] Read the Ceph configuration file.\n");
+    std::cout << absl::StreamFormat(
+        "[AGDCephWriter] Read the Ceph configuration file.\n");
   }
 
   ret = cluster_.connect();
   if (ret < 0) {
-    return Unavailable("[AGDCephWriter] Couldn't connect to cluster! error ", ret);
+    return Unavailable("[AGDCephWriter] Couldn't connect to cluster! error ",
+                       ret);
   } else {
-    std::cout << absl::StreamFormat("[AGDCephWriter] Connected to the cluster.\n");
+    std::cout << absl::StreamFormat(
+        "[AGDCephWriter] Connected to the cluster.\n");
   }
 
   return Status::OK();
@@ -54,11 +61,14 @@ void AGDCephWriter::create_io_ctx(const InputQueueItem& item,
                                   librados::IoCtx* io_ctx) {
   int ret = cluster_.ioctx_create(item.pool.c_str(), *io_ctx);
   if (ret < 0) {
-    std::cerr << absl::StreamFormat("[AGDCephWriter] Couldn't set up ioctx! error %d. Thread exiting.\n", ret);
+    std::cerr << absl::StreamFormat(
+        "[AGDCephWriter] Couldn't set up ioctx! error %d. Thread exiting.\n",
+        ret);
     exit(EXIT_FAILURE);
   } else {
     io_ctx->set_namespace(name_space);
-    std::cout << absl::StreamFormat("[AGDCephWriter] Created ioctx for namespace %s.\n", name_space);
+    std::cout << absl::StreamFormat(
+        "[AGDCephWriter] Created ioctx for namespace %s.\n", name_space);
   }
 }
 
@@ -84,13 +94,14 @@ Status AGDCephWriter::Initialize(const std::string& cluster_name,
       InputQueueItem item;
       std::cout << absl::StreamFormat("[AGDCephWriter] Trying to pop queue\n");
       if (!input_queue_->pop(item)) continue;
-      std::cout << absl::StreamFormat("[AGDCephWriter] input_queue = {%s, %d, %d, %s}\n",
-                                      item.pool, item.chunk_size,
-                                      item.first_ordinal, item.name);
+      std::cout << absl::StreamFormat(
+          "[AGDCephWriter] input_queue = {%s, %d, %d, %s}\n", item.pool,
+          item.chunk_size, item.first_ordinal, item.name);
 
       if (item.col_buf_pairs.size() != columns_.size()) {
-        std::cerr << absl::StreamFormat("[AGDCephWriter] expected %d columns, got %d\n",
-                                        columns_.size(), item.col_buf_pairs.size());
+        std::cerr << absl::StreamFormat(
+            "[AGDCephWriter] expected %d columns, got %d\n", columns_.size(),
+            item.col_buf_pairs.size());
         return;
       }
 
@@ -105,32 +116,39 @@ Status AGDCephWriter::Initialize(const std::string& cluster_name,
         // Compress.
         const auto& colbufpair = item.col_buf_pairs[buf_idx];
         auto compress_buf = buf_pool_->get();
-        compress_buf->reserve(colbufpair->data().size() + colbufpair->index().size());
+        compress_buf->reserve(colbufpair->data().size() +
+                              colbufpair->index().size());
         compress_buf->reset();
         AppendingGZIPCompressor compressor(*compress_buf.get());
         Status s = Status::OK();
         s = compressor.init();
         if (!s.ok()) {
-          std::cerr << absl::StreamFormat("[AGDCephWriter] Error: couldn't init compressor: %s\n",
-                                          s.error_message());
+          std::cerr << absl::StreamFormat(
+              "[AGDCephWriter] Error: couldn't init compressor: %s\n",
+              s.error_message());
           exit(EXIT_FAILURE);
         }
-        s = compressor.appendGZIP(colbufpair->index().data(), colbufpair->index().size());
+        s = compressor.appendGZIP(colbufpair->index().data(),
+                                  colbufpair->index().size());
         if (!s.ok()) {
-          std::cerr << absl::StreamFormat("[AGDCephWriter] Error: couldn't compress data: %s\n",
-                                          s.error_message());
+          std::cerr << absl::StreamFormat(
+              "[AGDCephWriter] Error: couldn't compress data: %s\n",
+              s.error_message());
           exit(EXIT_FAILURE);
         }
-        s = compressor.appendGZIP(colbufpair->data().data(), colbufpair->data().size());
+        s = compressor.appendGZIP(colbufpair->data().data(),
+                                  colbufpair->data().size());
         if (!s.ok()) {
-          std::cerr << absl::StreamFormat("[AGDCephWriter] Error: couldn't compress data: %s\n",
-                                          s.error_message());
+          std::cerr << absl::StreamFormat(
+              "[AGDCephWriter] Error: couldn't compress data: %s\n",
+              s.error_message());
           exit(EXIT_FAILURE);
         }
         s = compressor.finish();
         if (!s.ok()) {
-          std::cerr << absl::StreamFormat("[AGDCephWriter] Error: couldn't close compressor: %s\n",
-                                          s.error_message());
+          std::cerr << absl::StreamFormat(
+              "[AGDCephWriter] Error: couldn't close compressor: %s\n",
+              s.error_message());
           exit(EXIT_FAILURE);
         }
 
@@ -143,17 +161,22 @@ Status AGDCephWriter::Initialize(const std::string& cluster_name,
 
         memset(header.string_id, 0, sizeof(agd::format::FileHeader::string_id));
         auto copy_size =
-          std::min({name.size(), sizeof(agd::format::FileHeader::string_id)});
+            std::min({name.size(), sizeof(agd::format::FileHeader::string_id)});
         strncpy(&header.string_id[0], name.c_str(), copy_size);
 
         header.first_ordinal = item.first_ordinal;
         header.last_ordinal = item.first_ordinal + item.chunk_size;
 
-        // Send to Ceph.
-        std::string objId = item.name + "." + colname;
-        librados::bufferlist bl = bl.static_from_mem((char*) &header, sizeof(header));
+        // Send to Ceph. Strip any file path prefix. 
+        std::string obj_base =
+            item.name.substr(item.name.find_last_of('/') + 1);
+        std::string objId = absl::StrCat(obj_base, ".", colname);
+
+        librados::bufferlist bl =
+            bl.static_from_mem((char*)&header, sizeof(header));
         bl.append(compress_buf->data(), compress_buf->size());
-        std::cout << absl::StreamFormat("Writing %d bytes to object %s in ceph\n", bl.length(), objId);
+        std::cout << absl::StreamFormat(
+            "Writing %d bytes to object %s in ceph\n", bl.length(), objId);
         io_ctx.write_full(objId, bl);
 
         num_written_++;
@@ -184,4 +207,4 @@ void AGDCephWriter::Stop() {
   }
 }
 
-} // namespace agd
+}  // namespace agd

@@ -60,7 +60,6 @@ int main(int argc, char** argv) {
     redis_addr = args::get(redis_arg);
   }
 
-
   auto full_addr = absl::StrCat("tcp://", redis_addr);
   sw::redis::Redis redis(full_addr);
 
@@ -71,11 +70,6 @@ int main(int argc, char** argv) {
 
   const auto& records = agd_metadata["records"];
 
-  /*auto file_path_base =
-      agd_meta_path.substr(0, agd_meta_path.find_last_of('/') + 1);
-
-  std::cout << "[viralign-push] base path is " << file_path_base << "\n";*/
-  
   fs::path path(agd_meta_path);
 
   fs::path abs_path = fs::absolute(path);
@@ -90,6 +84,7 @@ int main(int argc, char** argv) {
     pool = agd_metadata["pool"];
   } catch (...) {
     // no pool exists, its fine
+    pool = "";
   }
 
   json j;
@@ -99,7 +94,6 @@ int main(int argc, char** argv) {
     auto to_send = j.dump();
     std::cout << "[viralign-push] Pushing: " << j["obj_name"] << "\n";
 
-
     try {
       auto resp = redis.rpush(queue_name, {to_send});
       std::cout << "Response was " << resp << "\n";
@@ -107,7 +101,6 @@ int main(int argc, char** argv) {
       std::cout << "[viralign-push] Push failed!\n";
       exit(0);
     }
-
   }
 
   std::cout << "[viralign-push] Pushed all values.\n";
