@@ -63,11 +63,11 @@ http_archive(
 )
 
 http_archive(
-  name = "redox",
-  urls = ["https://github.com/hmartiro/redox/archive/master.zip"],
-  sha256 = "c88db2ef26ffb475795e2a14c1836356c4e196d4d3b15ed6c8b094d48689bf4e",
-  build_file = "redox.BUILD",
-    strip_prefix = "redox-master",
+  name = "redisplusplus",
+  urls = ["https://github.com/sewenew/redis-plus-plus/archive/1.1.1.zip"],
+  sha256 = "17882f9253869fce31e7369ec669edc26ac4de70c1cafe711fc4e7e43fd7dd60",
+  build_file = "redispp.BUILD",
+  strip_prefix = "redis-plus-plus-1.1.1",
 )
 
 load("@rules_cc//cc:repositories.bzl", "rules_cc_dependencies")

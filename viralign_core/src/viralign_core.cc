@@ -13,7 +13,7 @@
 #include "json.hpp"
 #include "local_fetcher.h"
 #include "parallel_aligner.h"
-#include "redox_fetcher.h"
+#include "redis_fetcher.h"
 
 using json = nlohmann::json;
 using namespace errors;
@@ -29,7 +29,6 @@ constexpr absl::string_view SarsCov2Contig = "MN985325";
 
 // if not present, add the "aln" column to an existing AGD metadata json
 Status AddColumn(const std::string& agd_meta_path) {
-
   std::ifstream i(agd_meta_path.data());
   if (!i.good()) return errors::Internal("Couldn't open file ", agd_meta_path);
   json agd_metadata;
@@ -40,7 +39,8 @@ Status AddColumn(const std::string& agd_meta_path) {
   if (std::find(cols.begin(), cols.end(), "aln") == cols.end()) {
     agd_metadata["columns"].push_back("aln");
     std::ofstream o(agd_meta_path);
-    if (!o.good()) return errors::Internal("Couldn't open file ", agd_meta_path);
+    if (!o.good())
+      return errors::Internal("Couldn't open file ", agd_meta_path);
     o << std::setw(4) << agd_metadata;
   }
 
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
       {'t', "threads"});
   args::ValueFlag<std::string> redis_arg(
       parser, "redis queue",
-      "Address of the redis queue to pull work from [localhost:1234]",
+      "Address of the redis queue to pull work from <host>:<port>",
       {'r', "redis_queue"});
   args::ValueFlag<std::string> queue_arg(
       parser, "redis queue resource name",
@@ -105,7 +105,8 @@ int main(int argc, char** argv) {
     threads = std::thread::hardware_concurrency();
   }
 
-  std::cout << "[viralign-core] Using " << threads << " threads for alignment\n";
+  std::cout << "[viralign-core] Using " << threads
+            << " threads for alignment\n";
 
   std::string snap_cmd("");
   if (snap_args_arg) {
@@ -191,10 +192,31 @@ int main(int argc, char** argv) {
     // this is the "run forever" case
     if (redis_arg) {
       // create redox fetcher and run TODO
+      std::string redis_addr = args::get(redis_arg);
+
+      std::string queue_name("queue:viralign");
+
+      if (queue_arg) {
+        queue_name = args::get(queue_arg);
+      }
+
+      Status rs = RedisFetcher::Create(redis_addr, queue_name, fetcher);
+
+      if (!rs.ok()) {
+        std::cout << "[viralign-core] Unable to create redox fetcher: " << rs.error_message() << "\n";
+        exit(0);
+      }
+
+      rs = fetcher->Run();
       
+      if (!rs.ok()) {
+        std::cout << "[viralign-core] Error running redox fetcher: " << rs.error_message() << "\n";
+        exit(0);
+      }
+
     } else {
-      std::cout
-          << "[viralign-core] Need either -i or -r for data input. Exiting ... \n";
+      std::cout << "[viralign-core] Need either -i or -r for data input. "
+                   "Exiting ... \n";
       exit(0);
     }
   }
@@ -208,7 +230,8 @@ int main(int argc, char** argv) {
 
     const auto& ceph_conf_json_path = args::get(ceph_json_arg);
     s = CephManager::Run(input_queue, max_records, ceph_conf_json_path,
-                         sars_cov2_contig_idx, genome_index, options.get(), threads);
+                         sars_cov2_contig_idx, genome_index, options.get(),
+                         threads);
 
   } else {
     // we will IO from file system
@@ -231,9 +254,10 @@ int main(int argc, char** argv) {
     std::cout << "[viralign-core] Error: " << s.error_message() << "\n";
     return 0;
   }
-  
+
   auto t2 = std::chrono::high_resolution_clock::now();
-  auto total = std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count();
+  auto total =
+      std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count();
 
   std::cout << "[viralign-core] Alignment time: " << total << " seconds.\n";
 

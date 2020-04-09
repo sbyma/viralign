@@ -7,7 +7,6 @@ cc_binary(
           "@json//:json-cpp",
           "//libagd:libagd",
           "//liberr:liberr",
-          "@zstr//:zstr",
           "//concurrent_queue:concurrent_queue"
   ],
 )

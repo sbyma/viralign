@@ -1,9 +1,11 @@
 #include <filesystem>
+#include <iostream>
+#include <fstream>
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "args.h"
 #include "json.hpp"
-#include "redox.hpp"
+#include "src/sw/redis++/redis++.h"
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -58,30 +60,9 @@ int main(int argc, char** argv) {
     redis_addr = args::get(redis_arg);
   }
 
-  std::vector<std::string> addr_port = absl::StrSplit(redis_addr, ":");
 
-  if (addr_port.size() != 2) {
-    std::cout << "[viralign-push] Unable to parse redis addr: " << redis_addr
-              << "\n";
-    exit(0);
-  }
-
-  const std::string& addr = addr_port[0];
-  int port;
-  bool port_good = absl::SimpleAtoi(addr_port[1], &port);
-
-  if (!port_good) {
-    std::cout << "[viralign-push] Bad port: " << addr_port[1] << "\n";
-    exit(0);
-  }
-
-  redox::Redox rdx;
-  bool connected = rdx.connect(addr, port);
-
-  if (!connected) {
-    std::cout << "[viralign-push] Unable to connect to Redis.\n ";
-    exit(0);
-  }
+  auto full_addr = absl::StrCat("tcp://", redis_addr);
+  sw::redis::Redis redis(full_addr);
 
   std::ifstream i(agd_meta_path);
   json agd_metadata;
@@ -118,13 +99,15 @@ int main(int argc, char** argv) {
     auto to_send = j.dump();
     std::cout << "[viralign-push] Pushing: " << j["obj_name"] << "\n";
 
-    const auto& cmd =
-        rdx.commandSync({"RPUSH", queue_name, to_send});
 
-    if (!cmd) {
+    try {
+      auto resp = redis.rpush(queue_name, {to_send});
+      std::cout << "Response was " << resp << "\n";
+    } catch (...) {
       std::cout << "[viralign-push] Push failed!\n";
       exit(0);
     }
+
   }
 
   std::cout << "[viralign-push] Pushed all values.\n";
