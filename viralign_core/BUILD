@@ -1,7 +1,7 @@
 cc_binary(
   name = "viralign-core",
   srcs = glob(["src/*.cc", "src/*.h"]),
-  copts = ["-std=c++14"],
+  #copts = ["-std=c++14"],
   linkopts = ["-lev", "-lhiredis"],
   deps = ["@com_google_absl//absl/strings",
           "@args//:args",

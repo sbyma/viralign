@@ -2,7 +2,7 @@
 cc_binary(
     name = "samplesep",
     srcs = glob(["src/*.cc", "src/*.h"]),
-    copts = ["-std=c++14"],
+    #copts = ["-std=c++14"],
     visibility = ["//visibility:public"],
     deps = ["@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",

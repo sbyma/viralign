@@ -12,5 +12,5 @@ cc_library(
     ],
     linkstatic = 1,
     visibility = ["//visibility:public"],
-    copts = ["-pthread", "-MMD", "-msse", "-mssse3", "-msse4.2", "-Wno-format", "-std=c++11"]
+    copts = ["-pthread", "-MMD", "-msse", "-mssse3", "-msse4.2", "-Wno-format"]
 )

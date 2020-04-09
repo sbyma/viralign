@@ -28,6 +28,7 @@ Status RedoxFetcher::Run() {
     while (!done_) {
       agd::ReadQueueItem item;
       // issue LPOP command
+      std::cout << "[RedoxFetcher] Issuing LPOP ...\n";
       redox::Command<std::string>& cmd =
           rdx_.commandSync<std::string>({"BLPOP", queue_name_});
 

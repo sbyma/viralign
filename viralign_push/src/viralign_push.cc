@@ -1,3 +1,4 @@
+#include <filesystem>
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "args.h"
@@ -5,6 +6,7 @@
 #include "redox.hpp"
 
 using json = nlohmann::json;
+namespace fs = std::filesystem;
 
 int main(int argc, char** argv) {
   // TODO Separate thread args for other stages e.g. IO, parsing, compression?
@@ -81,17 +83,25 @@ int main(int argc, char** argv) {
     exit(0);
   }
 
-  std::ifstream i(agd_meta_path.data());
+  std::ifstream i(agd_meta_path);
   json agd_metadata;
   i >> agd_metadata;
   i.close();
 
   const auto& records = agd_metadata["records"];
 
-  auto file_path_base =
+  /*auto file_path_base =
       agd_meta_path.substr(0, agd_meta_path.find_last_of('/') + 1);
 
-  std::cout << "[viralign-push] base path is " << file_path_base << "\n";
+  std::cout << "[viralign-push] base path is " << file_path_base << "\n";*/
+  
+  fs::path path(agd_meta_path);
+
+  fs::path abs_path = fs::absolute(path);
+  fs::path abs_dir = abs_path.parent_path();
+
+  std::cout << "[viralign-push] Absolute path is " << abs_path << "\n";
+  std::cout << "[viralign-push] Absolute dir path is " << abs_dir << "\n";
 
   std::string pool("");
 
@@ -103,7 +113,7 @@ int main(int argc, char** argv) {
 
   json j;
   for (const auto& record : records) {
-    j["obj_name"] = absl::StrCat(file_path_base, record["path"].get<std::string>());
+    j["obj_name"] = absl::StrCat(abs_dir.c_str(), "/", record["path"].get<std::string>());
     j["pool"] = pool;
     auto to_send = j.dump();
     std::cout << "[viralign-push] Pushing: " << j["obj_name"] << "\n";

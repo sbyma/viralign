@@ -191,6 +191,7 @@ int main(int argc, char** argv) {
     // this is the "run forever" case
     if (redis_arg) {
       // create redox fetcher and run TODO
+      
     } else {
       std::cout
           << "[viralign-core] Need either -i or -r for data input. Exiting ... \n";
