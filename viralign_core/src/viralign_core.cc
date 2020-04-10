@@ -28,21 +28,37 @@ void CheckStatus(Status& s) {
 constexpr absl::string_view SarsCov2Contig = "MN985325";
 
 // if not present, add the "aln" column to an existing AGD metadata json
-Status AddColumn(const std::string& agd_meta_path) {
+Status AddColumnAndRef(const std::string& agd_meta_path, GenomeIndex* index) {
+  std::cout << "[viralign-core] Writing updated AGD metadata file ...\n";
   std::ifstream i(agd_meta_path.data());
   if (!i.good()) return errors::Internal("Couldn't open file ", agd_meta_path);
   json agd_metadata;
   i >> agd_metadata;
   i.close();
 
+  const Genome::Contig* contigs = index->getGenome()->getContigs();
+  auto num_contigs = index->getGenome()->getNumContigs();
+
+  json ref_genome;
+  for  (int i = 0; i < num_contigs; i++) {
+    json ref_entry;
+    ref_entry["name"] = absl::string_view(contigs[i].name, contigs[i].nameLength);
+    ref_entry["length"] = contigs[i].length;
+    ref_genome.push_back(ref_entry);
+  }
+
+  // replace ref genome even if it exists
+  agd_metadata["ref_genome"] = ref_genome;
+
+  // add aln column if necessary
   const auto& cols = agd_metadata["columns"];
   if (std::find(cols.begin(), cols.end(), "aln") == cols.end()) {
     agd_metadata["columns"].push_back("aln");
-    std::ofstream o(agd_meta_path);
-    if (!o.good())
-      return errors::Internal("Couldn't open file ", agd_meta_path);
-    o << std::setw(4) << agd_metadata;
   }
+
+  std::ofstream o(agd_meta_path);
+  if (!o.good()) return errors::Internal("Couldn't open file ", agd_meta_path);
+  o << std::setw(4) << agd_metadata;
 
   return Status::OK();
 }
@@ -247,7 +263,7 @@ int main(int argc, char** argv) {
 
   if (agd_metadata_args) {
     std::string agd_meta_path = args::get(agd_metadata_args);
-    s = AddColumn(agd_meta_path);
+    s = AddColumnAndRef(agd_meta_path, genome_index);
   }
 
   if (!s.ok()) {
