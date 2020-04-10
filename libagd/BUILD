@@ -3,7 +3,7 @@ cc_library(
     name = "libagd",
     srcs = glob(["src/*.cc"]),
     hdrs = glob(["src/*.h", "src/*.hpp"]),
-    linkopts = ["-lz", "-lrados"],
+    linkopts = ["-lz", "-lrados", "-lhiredis"],
     #copts = ["-std=c++14"],
     visibility = ["//visibility:public"],
     deps = ["@com_google_absl//absl/strings",
@@ -12,6 +12,7 @@ cc_library(
             "@com_google_absl//absl/container:flat_hash_map",
             "@json//:json-cpp",
             "//liberr:liberr",
+            "@redisplusplus//:redisplusplus",
             "//concurrent_queue:concurrent_queue",
             "//libagd/src/proto:alignment_cc_proto"
     ]

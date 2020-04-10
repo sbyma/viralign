@@ -11,9 +11,9 @@
 #include "ceph_manager.h"
 #include "filesystem_manager.h"
 #include "json.hpp"
-#include "local_fetcher.h"
+#include "libagd/src/local_fetcher.h"
 #include "parallel_aligner.h"
-#include "redis_fetcher.h"
+#include "libagd/src/redis_fetcher.h"
 
 using json = nlohmann::json;
 using namespace errors;

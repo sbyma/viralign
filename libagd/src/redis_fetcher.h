@@ -4,10 +4,6 @@
 #include "fetcher.h"
 #include "src/sw/redis++/redis++.h"
 
-
-// redox::Command<std::string>& cmd = rdx_.commandSync<std::string>({"RPUSH",
-// worker_id_finished_name_, std::to_string(worker_id_)});
-
 // maintains a connection to a redis queue, fetches items, and puts them in an
 // AGD input queue
 class RedisFetcher : public InputFetcher {
