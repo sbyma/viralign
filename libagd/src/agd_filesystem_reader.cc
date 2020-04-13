@@ -32,7 +32,7 @@ Status AGDFileSystemReader::Initialize(size_t threads) {
       for (const auto& col : columns_) {
         auto filepath = absl::StrCat(item.objName, ".", col);
 
-        //std::cout << "[AGDFSReader] reader mapping file: " << filepath << "\n";
+        std::cout << "[AGDFSReader] reader mapping file: " << filepath << "\n";
         std::pair<char*, uint64_t> mapped_file;
         Status s = mmap_file(filepath, &mapped_file.first, &mapped_file.second);
 
@@ -43,7 +43,7 @@ Status AGDFileSystemReader::Initialize(size_t threads) {
         out_item.mapped_files.push_back(mapped_file);
       }
 
-      //std::cout << "[AGDFSReader] pushing to inter_queue_: \n";
+      std::cout << "[AGDFSReader] pushing to inter_queue_: \n";
       out_item.name = std::move(item.objName);
       inter_queue_->push(std::move(out_item));
     }
@@ -67,7 +67,7 @@ Status AGDFileSystemReader::Initialize(size_t threads) {
         uint32_t num_records;
 
         Status s = parser.ParseNew(col_file.first, col_file.second, false, buf.get(), &first_ordinal, &num_records, record_id);
-        //std::cout << "[AGDFSReader] parsed chunk with : " << num_records << " records.\n";
+        std::cout << "[AGDFSReader] parsed chunk with : " << num_records << " records.\n";
         unmap_file(col_file.first, col_file.second);
 
         if (!s.ok()) {
@@ -79,7 +79,7 @@ Status AGDFileSystemReader::Initialize(size_t threads) {
         out_item.first_ordinal = first_ordinal;
       }
 
-      //std::cout << "[AGDFSReader] pushing to output queue.\n";
+      std::cout << "[AGDFSReader] pushing to output queue.\n";
       output_queue_->push(std::move(out_item));
     }
   };
