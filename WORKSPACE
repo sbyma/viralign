@@ -2,6 +2,7 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
+# TODO remove these local reps and use http_archive's
 local_repository(
   name = "json",
 
@@ -14,25 +15,12 @@ local_repository(
   path = "third_party/args",
 )
 
-local_repository(
-  name = "zstr",
-
-  path = "third_party/zstr",
-)
-
-
 http_archive(
     name = "com_google_absl",
     url = "https://github.com/abseil/abseil-cpp/archive/20200225.1.zip",
     sha256 = "7f9dffeaa566b9688600cdedaff85700bd0c4dbf8373a2764add466efd165b8d",
     strip_prefix = "abseil-cpp-20200225.1",
 )
-
-#git_repository(
-  #name="com_google_absl",
-  #remote="https://github.com/abseil/abseil-cpp",
-  #branch="lts_2018_12_18"
-#)
 
 # rules_cc defines rules for generating C++ code from Protocol Buffers.
 http_archive(

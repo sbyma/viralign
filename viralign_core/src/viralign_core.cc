@@ -12,8 +12,8 @@
 #include "filesystem_manager.h"
 #include "json.hpp"
 #include "libagd/src/local_fetcher.h"
-#include "parallel_aligner.h"
 #include "libagd/src/redis_fetcher.h"
+#include "parallel_aligner.h"
 
 using json = nlohmann::json;
 using namespace errors;
@@ -40,9 +40,10 @@ Status AddColumnAndRef(const std::string& agd_meta_path, GenomeIndex* index) {
   auto num_contigs = index->getGenome()->getNumContigs();
 
   json ref_genome;
-  for  (int i = 0; i < num_contigs; i++) {
+  for (int i = 0; i < num_contigs; i++) {
     json ref_entry;
-    ref_entry["name"] = absl::string_view(contigs[i].name, contigs[i].nameLength);
+    ref_entry["name"] =
+        absl::string_view(contigs[i].name, contigs[i].nameLength);
     ref_entry["length"] = contigs[i].length;
     ref_genome.push_back(ref_entry);
   }
@@ -85,7 +86,10 @@ int main(int argc, char** argv) {
       {'q', "queue_name"});
   args::ValueFlag<std::string> ceph_json_arg(
       parser, "ceph config file json",
-      "Ceph config json path. If not provided, filesystem access is assumed.",
+      "Ceph config json path. If not provided, filesystem access is assumed. "
+      "Required format: {\"conf_file\": <ceph conf file>, \"cluster\": <ceph "
+      "cluster name>, \"client\": <ceph client name>, \"namespace\": <required "
+      "namespace if any>}",
       {'c', "ceph_config"});
   args::ValueFlag<std::string> snap_args_arg(
       parser, "snap args", "Any args to pass to SNAP", {'s', "snap_args"});
@@ -219,14 +223,16 @@ int main(int argc, char** argv) {
       Status rs = RedisFetcher::Create(redis_addr, queue_name, fetcher);
 
       if (!rs.ok()) {
-        std::cout << "[viralign-core] Unable to create redox fetcher: " << rs.error_message() << "\n";
+        std::cout << "[viralign-core] Unable to create redox fetcher: "
+                  << rs.error_message() << "\n";
         exit(0);
       }
 
       rs = fetcher->Run();
-      
+
       if (!rs.ok()) {
-        std::cout << "[viralign-core] Error running redox fetcher: " << rs.error_message() << "\n";
+        std::cout << "[viralign-core] Error running redox fetcher: "
+                  << rs.error_message() << "\n";
         exit(0);
       }
 
@@ -238,7 +244,7 @@ int main(int argc, char** argv) {
   }
 
   auto input_queue = fetcher->GetInputQueue();
-  int max_records = fetcher->MaxRecords();  // run forever
+  auto max_records = fetcher->MaxRecords();  // run forever
 
   Status s = Status::OK();
   if (ceph_json_arg) {

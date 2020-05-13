@@ -166,7 +166,7 @@ AGDResultReader::AGDResultReader(const char* resource, size_t num_records,
 
     Status AGDResultReader::PeekNextResult(Alignment& result) {
       const char* data;
-      size_t len;
+      size_t len = 0;
       ERR_RETURN_IF_ERROR(PeekNextRecord(&data, &len));
       if (len == 0) {
         return errors::Unavailable("Empty result");

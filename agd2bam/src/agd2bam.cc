@@ -18,7 +18,6 @@ void CheckStatus(Status& s) {
 }
 
 int main(int argc, char** argv) {
-  // TODO Separate thread args for other stages e.g. IO, parsing, compression?
   args::ArgumentParser parser(
       "agd2bam",
       "Convert AGD to BAM. Requires dataset to be aligned.");
@@ -57,6 +56,7 @@ int main(int argc, char** argv) {
   auto input_queue = fetcher->GetInputQueue();
   auto max_chunks = fetcher->MaxRecords();
 
+  // need a thread arg?
   if (ceph_json_arg) {
     const auto& ceph_json_path = args::get(ceph_json_arg);
     auto s = CephManager::Run(input_queue, max_chunks, agd_meta_path, ceph_json_path, 5);

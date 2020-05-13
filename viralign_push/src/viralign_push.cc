@@ -17,13 +17,13 @@ int main(int argc, char** argv) {
   args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
   args::ValueFlag<std::string> redis_arg(
       parser, "redis addr", "Redis address to connect to [localhost:6379]",
-      {'q', "queue_name"});
+      {'r', "redis_addr"});
   args::ValueFlag<std::string> queue_arg(
       parser, "redis queue resource name",
       "Name of the redis resource to push stuff to [queue:viralign]",
       {'q', "queue_name"});
   args::Positional<std::string> agd_metadata_arg(
-      parser, "agd args", "The dataset chunk names to push");
+      parser, "agd args", "The AGD dataset to push");
 
   try {
     parser.ParseCLI(argc, argv);
@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
 
     try {
       auto resp = redis.rpush(queue_name, {to_send});
-      std::cout << "Response was " << resp << "\n";
+      std::cout << "[viralign-push] Response was " << resp << "\n";
     } catch (...) {
       std::cout << "[viralign-push] Push failed!\n";
       exit(0);
