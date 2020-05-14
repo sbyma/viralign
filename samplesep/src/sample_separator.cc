@@ -1,9 +1,13 @@
 
 #include "sample_separator.h"
 
-Status SampleSeparator::Separate() {
-  const char *base, *qual, *meta, *sample_base, *sample_qual, *sample_meta;
-  size_t base_len, meta_len, sample_base_len, sample_meta_len;
+Status SampleSeparator::Separate(const BarcodeMap& barcode_map) {
+  for (const auto& barcode_kv : barcode_map) {
+    barcodes_.push_back(absl::string_view(barcode_kv.first));
+  }
+
+  const char *base, *qual, *meta, *barcode_base, *barcode_qual, *barcode_meta;
+  size_t base_len, meta_len, barcode_base_len, barcode_meta_len;
   Status s = Status::OK();
 
   uint64_t reads_processed = 0;
@@ -15,19 +19,34 @@ Status SampleSeparator::Separate() {
               << std::string(base, base_len) << "\n"
               << std::string(qual, base_len) << "\n";*/
 
-    s = sample_fastq_parser_->GetNextRecord(&sample_base, &sample_base_len,
-                                            &sample_qual, &sample_meta,
-                                            &sample_meta_len);
+    s = sample_fastq_parser_->GetNextRecord(&barcode_base, &barcode_base_len,
+                                            &barcode_qual, &barcode_meta,
+                                            &barcode_meta_len);
     ERR_RETURN_IF_ERROR(s);
 
-    // use the sample bases to look up the appropriate dataset writer
-    // unclear how accurate the sample barcodes will be
-    // its possible we need to preprocess just the sample file in order to
-    // filter out bad barcodes
-    // TODO ask ioannis what expected bad barcode rates will be, and ask his
-    // advice on dealing with that
+    // use the barcode bases to look up the appropriate dataset writer
+    // not found barcodes with diff of one from existing can be "saved"
 
-    absl::string_view sample_key(sample_base, sample_base_len);
+    std::cout << "Looking up barcode: "
+              << absl::string_view(barcode_base + barcode_indices_.first,
+                                   barcode_length_)
+              << "\n";
+
+    absl::string_view sample_key(barcode_base + barcode_indices_.first,
+                                 barcode_length_);
+
+    if (!barcode_map.contains(sample_key)) {
+      // not a known barcode!
+      // try to "save" it if we can
+      absl::string_view saved;
+      if (SaveBarcode(sample_key, &saved)) {
+        sample_key = saved;
+        num_saved_barcodes_++;
+      } else {
+        num_bad_barcodes_++;
+      }
+    }
+
     if (sample_map_.contains(sample_key)) {
       auto& sample_chunk = sample_map_[sample_key];
       sample_chunk.base_builder.AppendRecord(base, base_len);
@@ -122,4 +141,43 @@ Status SampleSeparator::Separate() {
   }
 
   return Status::OK();
+}
+
+// adapted from
+// https://github.com/DeplanckeLab/BRB-seqTools/blob/master/src/tools/Utils.java#L186
+// see if there are any existing barcodes with max differences of `allowed_diffs_`
+// if more than one exists, don't use any
+bool SampleSeparator::SaveBarcode(absl::string_view barcode,
+                                  absl::string_view* saved) {
+  diffs_.resize(barcodes_.size());
+  memset(&diffs_[0], 0,
+         sizeof(uint32_t) * diffs_.size());  // zero the diffs array
+
+  for (size_t i = 0; i < barcode.size(); i++) {
+    for (size_t j = 0; j < barcodes_.size(); j++) {
+      if (barcode[i] != barcodes_[j][i]) {
+        diffs_[j]++;
+      }
+    }
+  }
+
+  absl::string_view savedbc;
+  for (size_t i = 0; i < diffs_.size(); i++) {
+    if (diffs_[i] <= allowed_diffs_) {
+      if (!savedbc.empty()) {
+        // there is more than one <= allowed_diffs_        
+        return false;
+        break;
+      }
+      savedbc = barcodes_[i];
+    }
+  }
+
+  if (savedbc.empty()) {
+    return false;
+  } else {
+    *saved = savedbc;
+    std::cout << "[samplesep] Saved barcode " << barcode << ", is now " << savedbc << "\n";
+    return true;
+  }
 }

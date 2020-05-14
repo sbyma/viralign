@@ -9,12 +9,6 @@ local_repository(
   path = "third_party/json",
 )
 
-local_repository(
-  name = "args",
-
-  path = "third_party/args",
-)
-
 http_archive(
     name = "com_google_absl",
     url = "https://github.com/abseil/abseil-cpp/archive/20200225.1.zip",
@@ -56,6 +50,14 @@ http_archive(
   sha256 = "17882f9253869fce31e7369ec669edc26ac4de70c1cafe711fc4e7e43fd7dd60",
   build_file = "redispp.BUILD",
   strip_prefix = "redis-plus-plus-1.1.1",
+)
+
+http_archive(
+  name = "args",
+  urls = ["https://github.com/Taywee/args/archive/6.2.2.zip"],
+  sha256 = "1a1c8846acd2d117843f6ab13518cac78bd0f8dcde8531603ac6f2115c9582d6",
+  build_file = "args.BUILD",
+  strip_prefix = "args-6.2.2",
 )
 
 load("@rules_cc//cc:repositories.bzl", "rules_cc_dependencies")

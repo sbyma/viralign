@@ -11,7 +11,7 @@
 #include "absl/strings/str_cat.h"
 #include "agd_chunk_converter.h"
 #include "agd_writer.h"
-#include "args.h"
+#include "args.hxx"
 #include "fastq_manager.h"
 #include "libagd/src/object_pool.h"
 
@@ -44,14 +44,13 @@ int main(int argc, char** argv) {
 
   try {
     parser.ParseCLI(argc, argv);
-  } catch (args::Help) {
+  } catch (const args::Completion& e) {
+    std::cout << e.what();
+    return 0;
+  } catch (const args::Help&) {
     std::cout << parser;
     return 0;
-  } catch (args::ParseError e) {
-    std::cerr << e.what() << std::endl;
-    std::cerr << parser;
-    return 1;
-  } catch (args::ValidationError e) {
+  } catch (const args::ParseError& e) {
     std::cerr << e.what() << std::endl;
     std::cerr << parser;
     return 1;
@@ -118,7 +117,7 @@ int main(int argc, char** argv) {
   } else {
     output_dir = dataset_name + "/";
   }
-  
+
   agd::ObjectPool<agd::Buffer> buffer_pool;
 
   unsigned int threads = std::thread::hardware_concurrency();
@@ -183,7 +182,6 @@ int main(int argc, char** argv) {
   OutputQueueType output_queue(10);
 
   std::vector<std::thread> converter_threads(threads);
-
 
   for (auto& t : converter_threads) {
     t = std::thread([&chunk_queue, &output_queue, &done, &buffer_pool]() {

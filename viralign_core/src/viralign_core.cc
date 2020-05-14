@@ -7,7 +7,7 @@
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
-#include "args.h"
+#include "args.hxx"
 #include "ceph_manager.h"
 #include "filesystem_manager.h"
 #include "json.hpp"
@@ -102,14 +102,13 @@ int main(int argc, char** argv) {
 
   try {
     parser.ParseCLI(argc, argv);
-  } catch (args::Help) {
+  } catch (const args::Completion& e) {
+    std::cout << e.what();
+    return 0;
+  } catch (const args::Help&) {
     std::cout << parser;
     return 0;
-  } catch (args::ParseError e) {
-    std::cerr << e.what() << std::endl;
-    std::cerr << parser;
-    return 1;
-  } catch (args::ValidationError e) {
+  } catch (const args::ParseError& e) {
     std::cerr << e.what() << std::endl;
     std::cerr << parser;
     return 1;

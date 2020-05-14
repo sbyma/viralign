@@ -1,6 +1,6 @@
 
 cc_library(
   name = "args",
-  hdrs = ["args.h"],
+  hdrs = ["args.hxx"],
   visibility = ["//visibility:public"]
 )
