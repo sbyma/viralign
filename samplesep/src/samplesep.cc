@@ -32,6 +32,9 @@ Status ParseBarcodeFile(const std::string &barcode_file_path,
   size_t barcode_len = 0;
   while (!barcode_file.eof()) {
     getline(barcode_file, line);
+
+    if (line == "") break;
+
     vector<string> values = absl::StrSplit(line, '\t');
 
     const auto &barcode = values[1];
@@ -73,7 +76,7 @@ int main(int argc, char **argv) {
                                                "AGD output chunk size [100000]",
                                                {'c', "chunksize"});
   args::PositionalList<std::string> fastq_files(parser, "data and sample",
-                                                "Sample first, then reads");
+                                                "Sample/barcode first, then reads");
 
   try {
     parser.ParseCLI(argc, argv);
@@ -103,7 +106,7 @@ int main(int argc, char **argv) {
     exit(0);
   }
 
-  // uint32_t barcode_len = barcode_map.begin()->first.size();
+  uint32_t barcode_len = barcode_map.begin()->first.size();
 
   auto &fastq_files_vec = args::get(fastq_files);
   auto chunk_size = args::get(chunk_size_arg);
@@ -128,7 +131,7 @@ int main(int argc, char **argv) {
   FastqParser sample_parser(sample_file_ptr, sample_file_len);
   FastqParser read_parser(read_file_ptr, read_file_len);
 
-  SampleSeparator::BarcodeIndices indices = std::make_pair(0, 5);
+  SampleSeparator::BarcodeIndices indices = std::make_pair(0, barcode_len);
   SampleSeparator separator(&read_parser, &sample_parser, chunk_size,
                             output_dir, indices);
 

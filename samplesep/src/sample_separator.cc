@@ -2,6 +2,8 @@
 #include "sample_separator.h"
 
 Status SampleSeparator::Separate(const BarcodeMap& barcode_map) {
+  auto start_time = std::chrono::high_resolution_clock::now();
+
   for (const auto& barcode_kv : barcode_map) {
     barcodes_.push_back(absl::string_view(barcode_kv.first));
   }
@@ -27,10 +29,10 @@ Status SampleSeparator::Separate(const BarcodeMap& barcode_map) {
     // use the barcode bases to look up the appropriate dataset writer
     // not found barcodes with diff of one from existing can be "saved"
 
-    std::cout << "Looking up barcode: "
+    /*std::cout << "Looking up barcode: "
               << absl::string_view(barcode_base + barcode_indices_.first,
                                    barcode_length_)
-              << "\n";
+              << "\n";*/
 
     absl::string_view sample_key(barcode_base + barcode_indices_.first,
                                  barcode_length_);
@@ -44,6 +46,12 @@ Status SampleSeparator::Separate(const BarcodeMap& barcode_map) {
         num_saved_barcodes_++;
       } else {
         num_bad_barcodes_++;
+        /*std::cout << "[samplesep] Unable to save barcode " << sample_key
+                  << ", skipping ...\n";*/
+        s = fastq_parser_->GetNextRecord(&base, &base_len, &qual, &meta,
+                                         &meta_len);
+        reads_processed++;
+        continue;
       }
     }
 
@@ -100,20 +108,28 @@ Status SampleSeparator::Separate(const BarcodeMap& barcode_map) {
       sample_map_.insert_or_assign(sample_key, std::move(newchunk));
 
       // create the writer
+      const auto& name = barcode_map.at(sample_key);
+      std::cout << "[samplesep] New dataset name is " << name << "\n";
+
       std::unique_ptr<agd::DatasetWriter> writer;
-      auto out_dir = absl::StrCat(output_dir_, sample_key, "/");
+      auto out_dir = absl::StrCat(output_dir_, name, "/");
+
       ERR_RETURN_IF_ERROR(agd::DatasetWriter::CreateDatasetWriter(
-          1, 1, std::string(sample_key), out_dir, {"base", "qual", "meta"},
-          writer, &buf_pool_));
+          1, 1, name, out_dir, {"base", "qual", "meta"}, writer, &buf_pool_));
+
       writer_map_.insert_or_assign(sample_key, std::move(writer));
     }
 
     s = fastq_parser_->GetNextRecord(&base, &base_len, &qual, &meta, &meta_len);
     reads_processed++;
 
-    if (reads_processed % 10000000 == 0) {
-      std::cout << "[samplesep] Processed " << reads_processed
-                << " reads ...\n";
+    if (reads_processed % 1000000 == 0) {
+      auto now = std::chrono::high_resolution_clock::now();
+      auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        now - start_time)
+                        .count();
+      std::cout << "[samplesep] Processed " << reads_processed << " reads in "
+                << float(millis) / 1000.0f << " seconds ...\n";
     }
   }
 
@@ -135,6 +151,13 @@ Status SampleSeparator::Separate(const BarcodeMap& barcode_map) {
   std::cout << "[samplesep] fastq processing complete, wrote out "
             << writer_map_.size() << " sample datasets from " << reads_processed
             << " reads.\n";
+  auto now = std::chrono::high_resolution_clock::now();
+  auto millis =
+      std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time)
+          .count();
+  std::cout << "[samplesep] Elapsed time: " << float(millis) / 1000.0f << " seconds\n";
+  std::cout << "[samplesep] # bad barcodes: " << num_bad_barcodes_ << "\n";
+  std::cout << "[samplesep] # saved barcodes: " << num_saved_barcodes_ << "\n";
   for (auto& v : writer_map_) {
     v.second->Stop();
     v.second->WriteMetadata();
@@ -145,8 +168,8 @@ Status SampleSeparator::Separate(const BarcodeMap& barcode_map) {
 
 // adapted from
 // https://github.com/DeplanckeLab/BRB-seqTools/blob/master/src/tools/Utils.java#L186
-// see if there are any existing barcodes with max differences of `allowed_diffs_`
-// if more than one exists, don't use any
+// see if there are any existing barcodes with max differences of
+// `allowed_diffs_` if more than one exists, don't use any
 bool SampleSeparator::SaveBarcode(absl::string_view barcode,
                                   absl::string_view* saved) {
   diffs_.resize(barcodes_.size());
@@ -165,7 +188,7 @@ bool SampleSeparator::SaveBarcode(absl::string_view barcode,
   for (size_t i = 0; i < diffs_.size(); i++) {
     if (diffs_[i] <= allowed_diffs_) {
       if (!savedbc.empty()) {
-        // there is more than one <= allowed_diffs_        
+        // there is more than one <= allowed_diffs_
         return false;
         break;
       }
@@ -177,7 +200,8 @@ bool SampleSeparator::SaveBarcode(absl::string_view barcode,
     return false;
   } else {
     *saved = savedbc;
-    std::cout << "[samplesep] Saved barcode " << barcode << ", is now " << savedbc << "\n";
+    /*std::cout << "[samplesep] Saved barcode " << barcode << ", is now "
+              << savedbc << "\n";*/
     return true;
   }
 }
