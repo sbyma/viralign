@@ -1,6 +1,6 @@
 #include <filesystem>
-#include <fstream>
 #include <iostream>
+#include <fstream>
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "args.hxx"
@@ -22,8 +22,8 @@ int main(int argc, char** argv) {
       parser, "redis queue resource name",
       "Name of the redis resource to push stuff to [queue:viralign]",
       {'q', "queue_name"});
-  args::Positional<std::string> agd_metadata_arg(parser, "agd args",
-                                                 "The AGD dataset to push");
+  args::Positional<std::string> agd_metadata_arg(
+      parser, "agd args", "The AGD dataset to push");
 
   try {
     parser.ParseCLI(argc, argv);
@@ -88,8 +88,7 @@ int main(int argc, char** argv) {
 
   json j;
   for (const auto& record : records) {
-    j["obj_name"] =
-        absl::StrCat(abs_dir.c_str(), "/", record["path"].get<std::string>());
+    j["obj_name"] = absl::StrCat(abs_dir.c_str(), "/", record["path"].get<std::string>());
     j["pool"] = pool;
     auto to_send = j.dump();
     std::cout << "[viralign-push] Pushing: " << j["obj_name"] << "\n";
@@ -104,6 +103,6 @@ int main(int argc, char** argv) {
   }
 
   std::cout << "[viralign-push] Pushed all values.\n";
-
+   
   return 0;
 }

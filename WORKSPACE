@@ -2,13 +2,6 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
-# TODO remove these local reps and use http_archive's
-local_repository(
-  name = "json",
-
-  path = "third_party/json",
-)
-
 http_archive(
     name = "com_google_absl",
     url = "https://github.com/abseil/abseil-cpp/archive/20200225.1.zip",
@@ -58,6 +51,14 @@ http_archive(
   sha256 = "1a1c8846acd2d117843f6ab13518cac78bd0f8dcde8531603ac6f2115c9582d6",
   build_file = "args.BUILD",
   strip_prefix = "args-6.2.2",
+)
+
+http_archive(
+  name = "json",
+  urls = ["https://github.com/nlohmann/json/releases/download/v3.7.3/include.zip"],
+  sha256 = "87b5884741427220d3a33df1363ae0e8b898099fbc59f1c451113f6732891014",
+  build_file = "json.BUILD",
+  strip_prefix = "single_include/nlohmann",
 )
 
 load("@rules_cc//cc:repositories.bzl", "rules_cc_dependencies")

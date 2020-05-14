@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
   for (const auto& col : columns) {
     s = column_iters[col_idx].GetRecordAt(idx_low, &data, &data_len);
     CheckStatus(s);
-    DumpValue(col, data, data_len);
+    DumpValue(col.get<std::string>(), data, data_len);
     col_idx++;
   }
   cout << "\n";
@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
     for (const auto& col : columns) {
       s = column_iters[col_idx].GetNextRecord(&data, &data_len);
       CheckStatus(s);
-      DumpValue(col, data, data_len);
+      DumpValue(col.get<std::string>(), data, data_len);
       col_idx++;
     }
     cout << "\n";
