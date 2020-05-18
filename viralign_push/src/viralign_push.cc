@@ -1,6 +1,6 @@
 #include <filesystem>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "args.hxx"
@@ -22,8 +22,8 @@ int main(int argc, char** argv) {
       parser, "redis queue resource name",
       "Name of the redis resource to push stuff to [queue:viralign]",
       {'q', "queue_name"});
-  args::Positional<std::string> agd_metadata_arg(
-      parser, "agd args", "The AGD dataset to push");
+  args::Positional<std::string> agd_metadata_arg(parser, "agd args",
+                                                 "The AGD dataset to push");
 
   try {
     parser.ParseCLI(argc, argv);
@@ -52,6 +52,8 @@ int main(int argc, char** argv) {
   if (queue_arg) {
     queue_name = args::get(queue_arg);
   }
+
+  std::string return_queue_name = absl::StrCat(queue_name, "_return");
 
   std::string redis_addr("localhost:6379");
 
@@ -86,9 +88,11 @@ int main(int argc, char** argv) {
     pool = "";
   }
 
+  size_t num_chunks = 0;
   json j;
   for (const auto& record : records) {
-    j["obj_name"] = absl::StrCat(abs_dir.c_str(), "/", record["path"].get<std::string>());
+    j["obj_name"] =
+        absl::StrCat(abs_dir.c_str(), "/", record["path"].get<std::string>());
     j["pool"] = pool;
     auto to_send = j.dump();
     std::cout << "[viralign-push] Pushing: " << j["obj_name"] << "\n";
@@ -96,6 +100,7 @@ int main(int argc, char** argv) {
     try {
       auto resp = redis.rpush(queue_name, {to_send});
       std::cout << "[viralign-push] Response was " << resp << "\n";
+      num_chunks++;
     } catch (...) {
       std::cout << "[viralign-push] Push failed!\n";
       exit(0);
@@ -103,6 +108,6 @@ int main(int argc, char** argv) {
   }
 
   std::cout << "[viralign-push] Pushed all values.\n";
-   
+
   return 0;
 }

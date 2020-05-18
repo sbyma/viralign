@@ -1,4 +1,5 @@
 #include "filesystem_manager.h"
+#include "redis_pusher.h"
 
 #include <chrono>
 #include <iomanip>
@@ -12,23 +13,21 @@
 using json = nlohmann::json;
 using namespace std::chrono_literals;
 
-Status FileSystemManager::Run(agd::ReadQueueType* input_queue, uint32_t max_records,
-                              int filter_contig_index, GenomeIndex* index,
-                              AlignerOptions* options, size_t threads) {
+Status FileSystemManager::Run(const FileSystemManagerParams& params) {
 
   std::vector<std::string> columns = {"base", "qual"};
 
   agd::ObjectPool<agd::Buffer> buf_pool;
   std::unique_ptr<agd::AGDFileSystemReader> reader;
   ERR_RETURN_IF_ERROR(agd::AGDFileSystemReader::Create(
-      columns, input_queue, 4, buf_pool, reader));
+      columns, params.input_queue, params.reader_threads, buf_pool, reader));
 
   auto chunk_queue = reader->GetOutputQueue();
 
   std::unique_ptr<ParallelAligner> aligner;
 
-  ERR_RETURN_IF_ERROR(ParallelAligner::Create(threads, index, options,
-                                              chunk_queue, filter_contig_index, aligner));
+  ERR_RETURN_IF_ERROR(ParallelAligner::Create(params.aligner_threads, params.index, params.options,
+                                              chunk_queue, params.filter_contig_index, aligner));
 
   auto aln_queue = aligner->GetOutputQueue();
 
@@ -36,16 +35,15 @@ Status FileSystemManager::Run(agd::ReadQueueType* input_queue, uint32_t max_reco
   ERR_RETURN_IF_ERROR(agd::AGDFileSystemWriter::Create({"aln"}, aln_queue, 10,
                                                        buf_pool, writer));
 
-  if (max_records > 0) {
-    while (writer->GetNumWritten() != max_records) {
+  if (params.max_records > 0) {
+    while (writer->GetNumWritten() != params.max_records) {
       std::this_thread::sleep_for(500ms);
     }
   } else {
     // else run forever 
     // TODO respond to stop signals
-    while (true) {
-      std::this_thread::sleep_for(500ms);
-    }
+    RedisPusher pusher(writer->GetOutputQueue(), params.redis_addr, params.queue_name);
+    pusher.Run(); // never stops
   }
 
   reader->Stop();

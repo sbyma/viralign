@@ -1,5 +1,6 @@
 
 #include "sample_separator.h"
+#include <fstream>
 
 Status SampleSeparator::Separate(const BarcodeMap& barcode_map) {
   auto start_time = std::chrono::high_resolution_clock::now();
@@ -158,7 +159,11 @@ Status SampleSeparator::Separate(const BarcodeMap& barcode_map) {
   std::cout << "[samplesep] Elapsed time: " << float(millis) / 1000.0f << " seconds\n";
   std::cout << "[samplesep] # bad barcodes: " << num_bad_barcodes_ << "\n";
   std::cout << "[samplesep] # saved barcodes: " << num_saved_barcodes_ << "\n";
+  
+  std::ofstream stats_output("samplesep_datasets.csv");
+  stats_output << "Name, Path\n";
   for (auto& v : writer_map_) {
+    stats_output << v.second->Name() << ", " << v.second->Path() << "\n";
     v.second->Stop();
     v.second->WriteMetadata();
   }

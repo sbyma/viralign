@@ -77,6 +77,9 @@ Status AGDCephWriter::Initialize(const std::string& cluster_name,
                                  const std::string& name_space,
                                  const std::string& ceph_conf_file,
                                  size_t threads) {
+  
+  output_queue_.reset(new OutputQueueType(30)); // is 5 big enough?
+
   column_map_["base"] = {
       agd::format::RecordType::TEXT,
       agd::format::CompressionType::GZIP};  // todo store as compacted bases
@@ -90,8 +93,8 @@ Status AGDCephWriter::Initialize(const std::string& cluster_name,
   setup_ceph_connection(cluster_name, user_name, ceph_conf_file);
 
   auto compress_and_write_func = [this, name_space]() {
+    InputQueueItem item;
     while (!done_) {
-      InputQueueItem item;
       std::cout << absl::StreamFormat("[AGDCephWriter] Trying to pop queue\n");
       if (!input_queue_->pop(item)) continue;
       std::cout << absl::StreamFormat(
@@ -180,6 +183,11 @@ Status AGDCephWriter::Initialize(const std::string& cluster_name,
         io_ctx.write_full(objId, bl);
 
         num_written_++;
+
+        OutputQueueItem output_item;
+        output_item.objName = std::move(item.name);
+        output_item.pool = std::move(item.pool);
+        output_queue_->push(output_item);
       }
     }
   };

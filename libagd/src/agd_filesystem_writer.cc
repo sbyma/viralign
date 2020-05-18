@@ -19,6 +19,9 @@ Status AGDFileSystemWriter::Create(
 }
 
 Status AGDFileSystemWriter::Initialize(size_t threads) {
+  
+  output_queue_.reset(new OutputQueueType(30)); // is 5 big enough?
+
   column_map_["base"] = {
       agd::format::RecordType::TEXT,
       agd::format::CompressionType::GZIP};  // todo store as compacted bases
@@ -122,6 +125,10 @@ Status AGDFileSystemWriter::Initialize(size_t threads) {
         out_file.close();
         num_written_++;
         buf_idx++;
+
+        OutputQueueItem output_item;
+        output_item.objName = std::move(item.name);
+        output_queue_->push(output_item);
       }
     }
   };

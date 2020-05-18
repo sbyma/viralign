@@ -50,6 +50,9 @@ class DatasetWriter {
 
   void Stop();
 
+  absl::string_view Name() const { return name_; }
+  absl::string_view Path() const { return path_; }
+
  private:
   DatasetWriter(const std::string& path, const std::string& name,
                 const std::vector<std::string>& columns)

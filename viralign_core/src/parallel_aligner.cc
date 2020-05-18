@@ -75,6 +75,7 @@ Status ParallelAligner::Init(size_t threads) {
           builder.AppendEmpty();
         } else {
           builder.AppendAlignmentResult(aln);
+          // here we could check which gene(s) the read mapped to
         }
 
         if (aln.position().ref_index() != -1) {

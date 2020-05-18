@@ -23,6 +23,8 @@ class AGDCephWriter {
  public:
   using InputQueueItem = agd::WriteQueueItem;
   using InputQueueType = agd::WriteQueueType;
+  using OutputQueueItem = agd::OutputQueueItem;
+  using OutputQueueType = agd::OutputQueueType;
 
   static Status Create(std::vector<std::string> columns,
                        const std::string& cluster_name,
@@ -35,6 +37,8 @@ class AGDCephWriter {
                        std::unique_ptr<AGDCephWriter>& writer);
 
   uint32_t GetNumWritten() { return num_written_.load(); };
+
+  OutputQueueType* GetOutputQueue() { return output_queue_.get(); }
 
   void Stop();
 
@@ -69,6 +73,8 @@ class AGDCephWriter {
   ObjectPool<Buffer>* buf_pool_;  // does not own
 
   InputQueueType* input_queue_;
+
+  std::unique_ptr<OutputQueueType> output_queue_;
 
   librados::Rados cluster_;
 

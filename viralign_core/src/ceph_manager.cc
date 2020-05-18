@@ -1,4 +1,5 @@
 #include "ceph_manager.h"
+#include "redis_pusher.h"
 
 #include <chrono>
 #include <iomanip>
@@ -18,12 +19,9 @@ using namespace errors;
 
 uint32_t threads = 1;
 
-Status CephManager::Run(agd::ReadQueueType* input_queue, uint32_t max_records,
-                        absl::string_view ceph_config_json_path,
-                        int filter_contig_index, GenomeIndex* index,
-                        AlignerOptions* options, size_t threads) {
+Status CephManager::Run(const CephManagerParams& params) {
 
-  std::ifstream ci(ceph_config_json_path.data());
+  std::ifstream ci(params.ceph_config_json_path.data());
   json ceph_config_json;
   ci >> ceph_config_json;
   ci.close();
@@ -39,36 +37,31 @@ Status CephManager::Run(agd::ReadQueueType* input_queue, uint32_t max_records,
   std::unique_ptr<agd::AGDCephReader> reader;
   ERR_RETURN_IF_ERROR(agd::AGDCephReader::Create(
       columns, cluster_name, username, name_space, ceph_conf_file,
-      input_queue, threads, buf_pool, reader));
+      params.input_queue, params.reader_threads, buf_pool, reader));
 
   auto chunk_queue = reader->GetOutputQueue();
 
   std::unique_ptr<ParallelAligner> aligner;
 
-  ERR_RETURN_IF_ERROR(ParallelAligner::Create(/*threads*/ threads, index, options,
-                                              chunk_queue, filter_contig_index, aligner));
+  ERR_RETURN_IF_ERROR(ParallelAligner::Create(/*threads*/ params.aligner_threads, params.index, params.options,
+                                              chunk_queue, params.filter_contig_index, aligner));
 
   auto aln_queue = aligner->GetOutputQueue();
 
-  // TODO convert to AGDCephWriter
-  // std::unique_ptr<agd::AGDFileSystemWriter> writer;
-  // ERR_RETURN_IF_ERROR(agd::AGDFileSystemWriter::Create({"aln"}, aln_queue, 10,
-  //                                                      buf_pool, writer));
   std::unique_ptr<agd::AGDCephWriter> writer;
   ERR_RETURN_IF_ERROR(agd::AGDCephWriter::Create(
     {"aln"}, cluster_name, username, name_space, ceph_conf_file,
-    aln_queue, threads, buf_pool, writer));
+    aln_queue, params.writer_threads, buf_pool, writer));
 
-  if (max_records > 0) {
-    while (writer->GetNumWritten() != max_records) {
+  if (params.max_records > 0) {
+    while (writer->GetNumWritten() != params.max_records) {
       std::this_thread::sleep_for(500ms);
     }
   } else {
-    // else run forever
+    // else run forever and 
     // TODO respond to stop signals
-    while (true) {
-      std::this_thread::sleep_for(500ms);
-    }
+    RedisPusher pusher(writer->GetOutputQueue(), params.redis_addr, params.queue_name);
+    pusher.Run(); // never stops
   }
 
   reader->Stop();

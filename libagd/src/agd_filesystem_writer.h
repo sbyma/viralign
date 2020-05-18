@@ -22,6 +22,8 @@ class AGDFileSystemWriter {
  public:
   using InputQueueItem = agd::WriteQueueItem;
   using InputQueueType = agd::WriteQueueType;
+  using OutputQueueItem = agd::OutputQueueItem;
+  using OutputQueueType = agd::OutputQueueType;
 
   static Status Create(std::vector<std::string> columns,
                        InputQueueType* input_queue, size_t threads,
@@ -29,6 +31,8 @@ class AGDFileSystemWriter {
                        std::unique_ptr<AGDFileSystemWriter>& writer);
 
   uint32_t GetNumWritten() { return num_written_.load(); };
+
+  OutputQueueType* GetOutputQueue() { return output_queue_.get(); }
 
   void Stop();
 
@@ -60,6 +64,8 @@ class AGDFileSystemWriter {
   ObjectPool<Buffer>* buf_pool_;  // does not own
 
   InputQueueType* input_queue_;
+  
+  std::unique_ptr<OutputQueueType> output_queue_;
 
   std::unique_ptr<InterQueueType> inter_queue_;
 

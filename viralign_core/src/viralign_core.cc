@@ -82,7 +82,8 @@ int main(int argc, char** argv) {
       {'r', "redis_queue"});
   args::ValueFlag<std::string> queue_arg(
       parser, "redis queue resource name",
-      "Name of the redis resource to get work from [queue:viralign]",
+      "Name of the redis resource to get work from [queue:viralign]. Names of "
+      "completed chunks will be pushed to return queue [name + \"_return\"]",
       {'q', "queue_name"});
   args::ValueFlag<std::string> ceph_json_arg(
       parser, "ceph config file json",
@@ -197,6 +198,19 @@ int main(int argc, char** argv) {
 
   auto t1 = std::chrono::high_resolution_clock::now();
 
+  std::string redis_addr("");
+  if (redis_arg) {
+    std::string redis_addr = args::get(redis_arg);
+  }
+
+  std::string queue_name("queue:viralign");
+  std::string return_queue_name("queue:viralign_return");
+
+  if (queue_arg) {
+    queue_name = args::get(queue_arg);
+    return_queue_name = absl::StrCat(queue_name, "_return");
+  }
+
   // determine source for data input (-i or -r)
   if (agd_metadata_args) {
     // create local fetcher and run
@@ -210,15 +224,6 @@ int main(int argc, char** argv) {
   } else {
     // this is the "run forever" case
     if (redis_arg) {
-      // create redox fetcher and run TODO
-      std::string redis_addr = args::get(redis_arg);
-
-      std::string queue_name("queue:viralign");
-
-      if (queue_arg) {
-        queue_name = args::get(queue_arg);
-      }
-
       Status rs = RedisFetcher::Create(redis_addr, queue_name, fetcher);
 
       if (!rs.ok()) {
@@ -250,15 +255,36 @@ int main(int argc, char** argv) {
     // we will do IO from ceph
 
     const auto& ceph_conf_json_path = args::get(ceph_json_arg);
-    s = CephManager::Run(input_queue, max_records, ceph_conf_json_path,
-                         sars_cov2_contig_idx, genome_index, options.get(),
-                         threads);
+
+    CephManagerParams params;
+    params.aligner_threads = threads;
+    params.ceph_config_json_path = ceph_conf_json_path;
+    params.filter_contig_index = sars_cov2_contig_idx;
+    params.index = genome_index;
+    params.max_records = max_records;
+    params.options = options.get();
+    params.input_queue = input_queue;
+    params.queue_name = return_queue_name;
+    params.reader_threads = 4;
+    params.writer_threads = 4;
+    params.redis_addr = redis_addr;
+    s = CephManager::Run(params);
 
   } else {
     // we will IO from file system
+    FileSystemManagerParams params;
+    params.aligner_threads = threads;
+    params.filter_contig_index = sars_cov2_contig_idx;
+    params.index = genome_index;
+    params.max_records = max_records;
+    params.options = options.get();
+    params.input_queue = input_queue;
+    params.queue_name = return_queue_name;
+    params.reader_threads = 4;
+    params.writer_threads = 4;
+    params.redis_addr = redis_addr;
 
-    s = FileSystemManager::Run(input_queue, max_records, sars_cov2_contig_idx,
-                               genome_index, options.get(), threads);
+    s = FileSystemManager::Run(params);
   }
 
   if (!s.ok()) {
