@@ -13,35 +13,24 @@
 #include <iostream>
 
 #include "compression.h"
+#include <filesystem>
 
 namespace agd {
 
 using namespace std;
 
 void CreateDirIfNotExist(const std::string& output_dir) {
-  struct stat info;
-  if (stat(output_dir.c_str(), &info) != 0) {
-    // doesnt exist, create
-    cout << "creating dir " << output_dir << "\n";
-    int e = mkdir(output_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    if (e != 0) {
-      cout << "could not create output dir " << output_dir << ", exiting ...\n";
-      exit(0);
-    }
-  } else if (!(info.st_mode & S_IFDIR)) {
-    // exists but not dir
-    cout << "output dir exists but is not dir, exiting ...\n";
+  if (!std::filesystem::exists(output_dir) ) {
+    cout << "[datasetwriter] creating dir " << output_dir << "\n";
+    std::filesystem::create_directories(output_dir);
+  } else if (!std::filesystem::is_directory(output_dir)) {
+    cout << "[datasetwriter] output dir exists but is not dir, exiting ...\n";
     exit(0);
   } else {
-    // dir exists, nuke
-    // im too lazy to do this the proper way
-    string cmd = absl::StrCat("rm -rf ", output_dir, "/*");
-    cout << "dir " << output_dir << " exists, nuking ...\n";
-    int nuke_result = system(cmd.c_str());
-    if (nuke_result != 0) {
-      cout << "Could not nuke dir " << output_dir << "\n";
-      exit(0);
-    }
+    std::filesystem::path outdir(output_dir);
+    outdir /= "*";
+    cout << "[datasetwriter] Nuking: " << outdir << "\n";
+    std::filesystem::remove_all(outdir);
   }
 }
 

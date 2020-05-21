@@ -3,7 +3,7 @@ cc_library(
     name = "libagd",
     srcs = glob(["src/*.cc"]),
     hdrs = glob(["src/*.h", "src/*.hpp"]),
-    linkopts = ["-lz", "-lrados", "-lhiredis"],
+    linkopts = ["-lz", "-lrados", "-lhiredis", "-lstdc++fs"],
     #copts = ["-std=c++14"],
     visibility = ["//visibility:public"],
     deps = ["@com_google_absl//absl/strings",
