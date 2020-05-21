@@ -5,8 +5,11 @@ option cc_enable_arenas = true;
 // protobuf schemas -- experimental
 
 message Position {
-  int32 ref_index = 1;
-  int64 position = 2;
+  // position within the contig
+  int64 position = 1;
+  // which contig in the reference (name and index)
+  int32 ref_index = 2;
+  string contig = 3;
 }
 
 message Alignment {

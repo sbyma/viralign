@@ -243,6 +243,7 @@ errors::Status SingleAligner::PostProcess(
 
   finalResult.mutable_next_position()->set_position(-1);
   finalResult.mutable_next_position()->set_ref_index(-1);
+  finalResult.mutable_next_position()->set_contig("");
 
   if (hasMate) {
     flags |= SAM_MULTI_SEGMENT;
@@ -321,6 +322,7 @@ errors::Status SingleAligner::PostProcess(
     }
     finalResult.mutable_next_position()->set_position(matePositionInContig);
     finalResult.mutable_next_position()->set_ref_index(mateContigIndex);
+    finalResult.mutable_next_position()->set_contig(matecontigName);
   }
 
   finalResult.set_mapping_quality(mapQuality);
@@ -328,6 +330,7 @@ errors::Status SingleAligner::PostProcess(
   finalResult.set_template_length(templateLength);
   finalResult.mutable_position()->set_position(positionInContig);
   finalResult.mutable_position()->set_ref_index(contigIndex);
+  finalResult.mutable_position()->set_contig(contigName);
 
   const int cigarBufSize = MAX_READ * 2;
   char cigarBuf[cigarBufSize];
