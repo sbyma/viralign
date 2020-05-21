@@ -53,8 +53,6 @@ int main(int argc, char** argv) {
     queue_name = args::get(queue_arg);
   }
 
-  std::string return_queue_name = absl::StrCat(queue_name, "_return");
-
   std::string redis_addr("localhost:6379");
 
   if (redis_arg) {
@@ -95,7 +93,7 @@ int main(int argc, char** argv) {
         absl::StrCat(abs_dir.c_str(), "/", record["path"].get<std::string>());
     j["pool"] = pool;
     auto to_send = j.dump();
-    std::cout << "[viralign-push] Pushing: " << j["obj_name"] << "\n";
+    std::cout << "[viralign-push] Pushing: " << j["obj_name"] << " to queue " << queue_name << "\n";
 
     try {
       auto resp = redis.rpush(queue_name, {to_send});
