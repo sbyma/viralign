@@ -33,23 +33,20 @@ def main():
     parser.add_argument(
         "-r",
         "--redis_addr",
-        default="",
+        default="localhost:6379",
         help="Redis server address for sending work/receiving results",
     )
     parser.add_argument(
         "-q",
         "--queue_name",
-        default="viralign:queue",
-        help="Redis queue name to send work on [viralign:queue (_return)]",
+        default="queue:viralign",
+        help="Redis queue name to send work on [queue:viralign (_return)]",
     )
     parser.add_argument(
         "-g",
         "--gtf_file",
         default="",
         help="The GTF file defining the genes to map reads to",
-    )
-    parser.add_argument(
-        "-G", "--genome_ref", default="", help="Reference genome to align reads to"
     )
     parser.add_argument(
         "-o",
@@ -62,6 +59,9 @@ def main():
     print("[viralign] The sample barcode file is: {}".format(args.barcodes))
     print("[viralign] The reads file is: {}".format(args.reads))
     # call samplesep
+
+    if args.output_dir[-1] != '/':
+        args.output_dir += '/'
 
     samplesep_cmd = [
         "./bazel-bin/samplesep/samplesep",
@@ -84,6 +84,8 @@ def main():
     # enumerate dataset metadata files
     # run viralign-push for each one
     total_chunks = 0
+    datasets = []
+
     with open("samplesep_datasets.csv") as f:
         lines = f.readlines()
         # first line is Name, Path
@@ -103,9 +105,14 @@ def main():
                 print("[viralign] Pushing dataset {} to alignment, had {} chunks".format(metadata_path, chunks))
                 push_cmd = ["./bazel-bin/viralign_push/viralign-push", "-r", args.redis_addr, "-q", args.queue_name, metadata_path]
                 print("[viralign] Push cmd: {}".format(push_cmd))
+                datasets.append(metadata_path)
                 subprocess.run(push_cmd)
 
+    print("[viralign] All datasets: {}".format(datasets))
+
     host, port = args.redis_addr.split(':')
+
+    print("[viralign] Connecting to {}:{}".format(host, port))
 
     r = redis.Redis(host=host, port=int(port))
 
@@ -116,7 +123,16 @@ def main():
 
     print("[viralign] All chunks aligned.")
 
+    with open("aligned_datasets.json") as f:
+        json.dump(datasets, f)
+
     # count covid genes
+
+    # call viralign genecount 
+    count_cmd = ["./bazel-bin/viralign_genecount/viralign-genecount", "-g", args.gtf_file, "aligned_datasets.json"]
+    subprocess.run(count_cmd)
+
+
 
 
 if __name__ == "__main__":
