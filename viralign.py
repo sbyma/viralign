@@ -85,6 +85,13 @@ def main():
     # run viralign-push for each one
     total_chunks = 0
     datasets = []
+    
+    host, port = args.redis_addr.split(':')
+
+    print("[viralign] Connecting to redis server at {}:{}".format(host, port))
+
+    r = redis.Redis(host=host, port=int(port))
+    r.delete(args.queue_name)
 
     with open("samplesep_datasets.csv") as f:
         lines = f.readlines()
@@ -110,12 +117,6 @@ def main():
 
     print("[viralign] All datasets: {}".format(datasets))
 
-    host, port = args.redis_addr.split(':')
-
-    print("[viralign] Connecting to {}:{}".format(host, port))
-
-    r = redis.Redis(host=host, port=int(port))
-
     return_queue = args.queue_name + "_return"
     for c in range(total_chunks):
         resp, other = r.blpop(return_queue)
@@ -131,9 +132,6 @@ def main():
     # call viralign genecount 
     count_cmd = ["./bazel-bin/viralign_genecount/viralign-genecount", "-g", args.gtf_file, "aligned_datasets.json"]
     subprocess.run(count_cmd)
-
-
-
 
 if __name__ == "__main__":
     main()
