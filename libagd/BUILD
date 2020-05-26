@@ -1,19 +1,26 @@
-
 cc_library(
     name = "libagd",
     srcs = glob(["src/*.cc"]),
-    hdrs = glob(["src/*.h", "src/*.hpp"]),
-    linkopts = ["-lz", "-lrados", "-lhiredis", "-lstdc++fs"],
-    #copts = ["-std=c++14"],
+    hdrs = glob([
+        "src/*.h",
+        "src/*.hpp",
+    ]),
+    linkopts = [
+        "-lz",
+        "-lrados",
+        "-lhiredis",
+        "-lstdc++fs",
+    ],
     visibility = ["//visibility:public"],
-    deps = ["@com_google_absl//absl/strings",
-            "@com_google_absl//absl/strings:str_format",
-            "@com_google_absl//absl/synchronization",
-            "@com_google_absl//absl/container:flat_hash_map",
-            "@json//:json-cpp",
-            "//liberr:liberr",
-            "@redisplusplus//:redisplusplus",
-            "//concurrent_queue:concurrent_queue",
-            "//libagd/src/proto:alignment_cc_proto"
-    ]
+    deps = [
+        "//concurrent_queue",
+        "//libagd/src/proto:alignment_cc_proto",
+        "//liberr",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/synchronization",
+        "@json//:json-cpp",
+        "@redisplusplus",
+    ],
 )

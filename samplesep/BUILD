@@ -1,15 +1,17 @@
-
 cc_binary(
     name = "samplesep",
-    srcs = glob(["src/*.cc", "src/*.h"]),
-    #copts = ["-std=c++14"],
+    srcs = glob([
+        "src/*.cc",
+        "src/*.h",
+    ]),
     visibility = ["//visibility:public"],
-    deps = ["@com_google_absl//absl/strings",
-        "@com_google_absl//absl/synchronization",
+    deps = [
+        "//libagd",
+        "//liberr",
+        "@args",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
-        "//liberr:liberr",
-        "@args//:args",
-        "//libagd:libagd",
-    ]
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
+    ],
 )

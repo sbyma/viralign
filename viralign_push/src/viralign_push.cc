@@ -11,7 +11,6 @@ using json = nlohmann::json;
 namespace fs = std::filesystem;
 
 int main(int argc, char** argv) {
-  // TODO Separate thread args for other stages e.g. IO, parsing, compression?
   args::ArgumentParser parser("viralign-push",
                               "Push AGD dataset chunknames to queue.");
   args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
@@ -74,8 +73,8 @@ int main(int argc, char** argv) {
   fs::path abs_path = fs::absolute(path);
   fs::path abs_dir = abs_path.parent_path();
 
-  std::cout << "[viralign-push] Absolute path is " << abs_path << "\n";
-  std::cout << "[viralign-push] Absolute dir path is " << abs_dir << "\n";
+  //std::cout << "[viralign-push] Absolute path is " << abs_path << "\n";
+  //std::cout << "[viralign-push] Absolute dir path is " << abs_dir << "\n";
 
   std::string pool("");
 
@@ -105,7 +104,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  std::cout << "[viralign-push] Pushed all values.\n";
+  //std::cout << "[viralign-push] Pushed all values.\n";
 
   return 0;
 }

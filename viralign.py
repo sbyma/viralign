@@ -91,7 +91,7 @@ def main():
     print("[viralign] Connecting to redis server at {}:{}".format(host, port))
 
     r = redis.Redis(host=host, port=int(port))
-    r.delete(args.queue_name)
+    r.delete(args.queue_name) # clear the queue / list
 
     with open("samplesep_datasets.csv") as f:
         lines = f.readlines()
@@ -128,7 +128,6 @@ def main():
         json.dump(datasets, f)
 
     # count covid genes
-
     # call viralign genecount 
     count_cmd = ["./bazel-bin/viralign_genecount/viralign-genecount", "-g", args.gtf_file, "aligned_datasets.json"]
     subprocess.run(count_cmd)
